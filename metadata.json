@@ -1,0 +1,5 @@
+{
+  "name": "RadioPrize Master",
+  "description": "Um sistema completo para controle de prêmios de rádio, gerenciando estoque, validade, sorteios e entregas com auxílio de IA.",
+  "requestFramePermissions": []
+}
