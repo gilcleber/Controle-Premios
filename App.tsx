@@ -4,7 +4,7 @@ import { Prize, PrizeOutput, TabView, UserRole } from './types';
 import { PrizeList } from './components/PrizeList';
 import { PrizeForm } from './components/PrizeForm';
 import { WinnerList } from './components/WinnerList';
-import { LayoutDashboard, Gift, Users, Plus, Radio, ClipboardList, LogOut, Copy, X, Save, History, AlertTriangle, UserCog, Shield, User, Share2, Lock, Link as LinkIcon, Download, Upload, Database } from 'lucide-react';
+import { LayoutDashboard, Gift, Users, Plus, Radio, ClipboardList, LogOut, Copy, X, Save, History, AlertTriangle, UserCog, Shield, User, Share2, Lock, Link as LinkIcon, Download, Upload, Database, FileUp, CheckCircle, Cloud, RefreshCw, Search, Key, Globe, ExternalLink } from 'lucide-react';
 
 const App: React.FC = () => {
   // --- Auth State ---
@@ -44,17 +44,30 @@ const App: React.FC = () => {
 
   // Share Modal State
   const [shareModalOpen, setShareModalOpen] = useState(false);
-
-  // File Input Ref for Restore
+  
+  // Cloud / Sync State
+  const [cloudModalOpen, setCloudModalOpen] = useState(false);
+  const [cloudConfig, setCloudConfig] = useState({ binId: '', apiKey: '' });
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Import/Restore State
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const loginFileInputRef = useRef<HTMLInputElement>(null); // For loading data at login screen
 
   // --- Initialization & Persistence ---
   useEffect(() => {
     // 1. Load Data
     const savedPrizes = localStorage.getItem('radio_prizes');
     const savedOutputs = localStorage.getItem('radio_outputs');
+    const savedCloud = localStorage.getItem('radio_cloud_config');
+    const savedLastSync = localStorage.getItem('radio_last_sync');
+
     if (savedPrizes) setPrizes(JSON.parse(savedPrizes));
     if (savedOutputs) setOutputs(JSON.parse(savedOutputs));
+    if (savedCloud) setCloudConfig(JSON.parse(savedCloud));
+    if (savedLastSync) setLastSync(savedLastSync);
 
     // 2. Check URL for Magic Links
     const params = new URLSearchParams(window.location.search);
@@ -105,6 +118,101 @@ const App: React.FC = () => {
     return `${window.location.origin}${window.location.pathname}?role=${role}`;
   };
 
+  const filteredOutputs = outputs.filter(output => {
+    const q = searchQuery.toLowerCase();
+    if (!q) return true;
+    return (
+      output.winnerName?.toLowerCase().includes(q) ||
+      output.prizeName?.toLowerCase().includes(q) ||
+      output.note?.toLowerCase().includes(q) ||
+      output.date?.includes(q) ||
+      output.winnerDoc?.includes(q)
+    );
+  });
+
+  // --- Cloud Sync Functions (JSONBin) ---
+  
+  const saveCloudConfig = () => {
+    localStorage.setItem('radio_cloud_config', JSON.stringify(cloudConfig));
+    alert('Configuração da Nuvem Salva! Agora você pode sincronizar os dados.');
+  };
+
+  const handleCloudUpload = async () => {
+    if (!cloudConfig.binId || !cloudConfig.apiKey) {
+      alert('Configure a nuvem primeiro!');
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      const response = await fetch(`https://api.jsonbin.io/v3/b/${cloudConfig.binId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': cloudConfig.apiKey
+        },
+        body: JSON.stringify({ prizes, outputs, lastUpdate: new Date().toISOString() })
+      });
+      
+      if (response.ok) {
+        const now = new Date().toLocaleString();
+        setLastSync(now);
+        localStorage.setItem('radio_last_sync', now);
+        alert('Dados enviados para a nuvem com sucesso!');
+        setCloudModalOpen(false);
+      } else {
+        throw new Error('Falha no envio');
+      }
+    } catch (error) {
+      alert('Erro ao enviar dados. Verifique se o Bin ID e a API Key estão corretos.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleCloudDownload = async () => {
+    if (!cloudConfig.binId || !cloudConfig.apiKey) {
+      alert('Nuvem não configurada. Peça ao administrador.');
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      const response = await fetch(`https://api.jsonbin.io/v3/b/${cloudConfig.binId}/latest`, {
+        method: 'GET',
+        headers: {
+          'X-Master-Key': cloudConfig.apiKey
+        }
+      });
+
+      if (response.ok) {
+        const json = await response.json();
+        const data = json.record;
+        
+        if (data.prizes || data.outputs) {
+           setPrizes(data.prizes || []);
+           setOutputs(data.outputs || []);
+           const now = new Date().toLocaleString();
+           setLastSync(now);
+           localStorage.setItem('radio_last_sync', now);
+           alert('Dados atualizados da nuvem com sucesso!');
+           setCloudModalOpen(false);
+        } else {
+           // Case where bin exists but is empty
+           if (Object.keys(data).length === 0) {
+             alert('O Bin da nuvem está vazio. Faça o primeiro envio (Upload) para começar.');
+           } else {
+             alert('Formato de dados desconhecido na nuvem.');
+           }
+        }
+      } else {
+        throw new Error('Falha no download');
+      }
+    } catch (error) {
+      alert('Erro ao baixar dados. Verifique a configuração.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // --- Handlers ---
 
   const handleAdminLoginAttempt = (e: React.FormEvent) => {
@@ -121,7 +229,6 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setUserRole(null);
-    // Remove query params to prevent auto-login on refresh if user explicitly logs out
     window.history.pushState({}, '', window.location.pathname);
   };
 
@@ -297,11 +404,11 @@ const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleRestoreBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRestoreBackup = (e: React.ChangeEvent<HTMLInputElement>, isLoginScreen: boolean = false) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!confirm('ATENÇÃO: Isso irá substituir TODOS os dados atuais pelos dados do backup. Deseja continuar?')) {
+    if (!isLoginScreen && !confirm('ATENÇÃO: Isso irá substituir TODOS os dados atuais pelos dados do backup. Deseja continuar?')) {
       e.target.value = ''; // Reset file input
       return;
     }
@@ -310,10 +417,10 @@ const App: React.FC = () => {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        if (json.prizes && json.outputs) {
-          setPrizes(json.prizes);
-          setOutputs(json.outputs);
-          alert('Backup restaurado com sucesso!');
+        if (json.prizes || json.outputs) {
+          setPrizes(json.prizes || []);
+          setOutputs(json.outputs || []);
+          alert('Dados carregados com sucesso!');
         } else {
           alert('Arquivo de backup inválido.');
         }
@@ -332,6 +439,8 @@ const App: React.FC = () => {
 
   // --- Login Screen ---
   if (!userRole) {
+    const hasData = prizes.length > 0 || outputs.length > 0;
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 to-slate-900 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col md:flex-row">
@@ -341,6 +450,38 @@ const App: React.FC = () => {
             </div>
             <h1 className="text-3xl font-bold mb-2">RadioPrize</h1>
             <p className="opacity-80">Sistema de Controle de Prêmios e Promoções</p>
+            
+            {/* Cloud Update Button for Login Screen */}
+            {cloudConfig.apiKey && cloudConfig.binId && (
+              <button
+                onClick={handleCloudDownload}
+                className="mt-6 w-full bg-white/20 hover:bg-white/30 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                {isSyncing ? <RefreshCw className="animate-spin" size={16}/> : <Cloud size={16}/>}
+                Atualizar da Nuvem
+              </button>
+            )}
+
+            {!hasData && (
+              <div className="mt-8 p-4 bg-blue-700/50 rounded-lg border border-blue-400/30 w-full">
+                <p className="text-sm font-bold mb-2 flex items-center justify-center gap-2">
+                  <Database size={16} /> Banco de Dados Vazio
+                </p>
+                <p className="text-xs opacity-80 mb-3">
+                  Se você recebeu o arquivo de dados do administrador, carregue-o aqui.
+                </p>
+                <label className="bg-white text-blue-700 px-4 py-2 rounded-lg font-bold text-sm cursor-pointer hover:bg-blue-50 transition-colors w-full flex items-center justify-center gap-2">
+                  <Upload size={14} /> Carregar Dados
+                  <input 
+                    type="file" 
+                    ref={loginFileInputRef}
+                    onChange={(e) => handleRestoreBackup(e, true)}
+                    accept=".json" 
+                    className="hidden" 
+                  />
+                </label>
+              </div>
+            )}
           </div>
           
           <div className="p-8 md:w-3/5 relative">
@@ -368,12 +509,12 @@ const App: React.FC = () => {
                     <div className="w-full border-t border-gray-100"></div>
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-2 text-gray-400">Acesso Geral</span>
+                    <span className="bg-white px-2 text-gray-400">Links de Acesso</span>
                   </div>
                 </div>
 
                 <div className="text-center p-4 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-500 text-sm">
-                   Para acessar como <strong>Locutor</strong> ou <strong>Recepção</strong>, utilize o link de acesso compartilhado pelo administrador.
+                   Para acessar como <strong>Locutor</strong> ou <strong>Recepção</strong>, utilize o link compartilhado pelo administrador ou carregue os dados ao lado se for seu primeiro acesso.
                 </div>
               </div>
             ) : (
@@ -491,6 +632,16 @@ const App: React.FC = () => {
           )}
 
           <div className="mt-auto">
+             {/* Global Cloud Button for all Roles */}
+             <button
+                onClick={() => userRole === 'ADMIN' ? setCloudModalOpen(true) : handleCloudDownload()}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-indigo-400 hover:bg-indigo-900/20 hover:text-indigo-300 transition-colors mb-2"
+                title={lastSync ? `Última atualização: ${lastSync}` : 'Sincronizar dados'}
+              >
+                {isSyncing ? <RefreshCw className="animate-spin" size={20} /> : <Cloud size={20} />}
+                {userRole === 'ADMIN' ? 'Nuvem / Sync' : 'Atualizar Dados'}
+              </button>
+
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-red-900/20 hover:text-red-400 transition-colors"
@@ -592,10 +743,10 @@ const App: React.FC = () => {
 
                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                  <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                   <Database size={18} className="text-indigo-500" /> Backup e Dados (Sistema Local)
+                   <Database size={18} className="text-indigo-500" /> Gestão de Dados Local
                  </h3>
                  <p className="text-sm text-gray-500 mb-4">
-                   Como este sistema roda localmente, use estas opções para transferir dados entre computadores.
+                   Este sistema roda no navegador. Use estas opções para transferir dados ou salvar cópias de segurança.
                  </p>
                  <div className="flex gap-4">
                    <button 
@@ -608,7 +759,7 @@ const App: React.FC = () => {
                    
                    <label className="flex-1 flex flex-col items-center justify-center p-4 border border-green-100 bg-green-50 rounded-lg hover:bg-green-100 transition-colors text-green-700 gap-2 cursor-pointer">
                      <Upload size={24} />
-                     <span className="font-bold text-sm">Restaurar Dados</span>
+                     <span className="font-bold text-sm">Carregar Dados</span>
                      <input 
                        type="file" 
                        ref={fileInputRef}
@@ -635,13 +786,32 @@ const App: React.FC = () => {
         )}
 
         {(activeTab === 'OUTPUTS' || userRole === 'RECEPTION') && (
-          <WinnerList 
-            winners={outputs} 
-            role={userRole}
-            onConfirmPickup={handleConfirmPickup} 
-            onEdit={handleEditOutput}
-            onDelete={handleDeleteOutput}
-          />
+          <div>
+            {/* Search Bar for Output History */}
+            <div className="mb-4 flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm max-w-md">
+              <Search size={20} className="text-gray-400 ml-2" />
+              <input 
+                type="text"
+                placeholder="Buscar por ganhador, prêmio ou data..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-800 placeholder-gray-400"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600 p-1">
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            <WinnerList 
+              winners={filteredOutputs} 
+              role={userRole}
+              onConfirmPickup={handleConfirmPickup} 
+              onEdit={handleEditOutput}
+              onDelete={handleDeleteOutput}
+            />
+          </div>
         )}
       </main>
 
@@ -652,6 +822,84 @@ const App: React.FC = () => {
           onSave={handleSavePrize}
           onCancel={() => { setIsFormOpen(false); setEditingPrize(undefined); }}
         />
+      )}
+
+      {/* Cloud Config & Sync Modal (Admin) */}
+      {cloudModalOpen && userRole === 'ADMIN' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
+               <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Cloud size={20} className="text-indigo-600"/> Sincronização na Nuvem</h3>
+               <button onClick={() => setCloudModalOpen(false)} className="text-gray-500 hover:text-gray-700"><X size={20} /></button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-lg text-sm text-indigo-800 space-y-2">
+                <p className="font-bold flex items-center gap-2"><ExternalLink size={14}/> Como configurar (Passo a Passo):</p>
+                <ol className="list-decimal list-inside space-y-1 text-xs">
+                  <li>No site JSONBin, clique em <strong>API KEYS</strong> no menu lateral e copie a chave Mestra.</li>
+                  <li>Clique em <strong>BINS</strong>, crie um novo. No editor, apague tudo e cole: <code>{`{"prizes": [], "outputs": []}`}</code> e clique em <strong>Save Bin</strong>.</li>
+                  <li>Copie o código <strong>Bin ID</strong> gerado no topo da página.</li>
+                </ol>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Master API Key (X-Master-Key)</label>
+                <div className="flex gap-2">
+                   <Key size={16} className="text-gray-400 mt-2"/>
+                   <input 
+                    type="password" 
+                    value={cloudConfig.apiKey}
+                    onChange={e => setCloudConfig(prev => ({...prev, apiKey: e.target.value}))}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    placeholder="Sua chave API do JSONBin"
+                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Bin ID</label>
+                <div className="flex gap-2">
+                   <Globe size={16} className="text-gray-400 mt-2"/>
+                   <input 
+                    type="text" 
+                    value={cloudConfig.binId}
+                    onChange={e => setCloudConfig(prev => ({...prev, binId: e.target.value}))}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    placeholder="ID do seu Bin (Ex: 673b...)"
+                   />
+                </div>
+              </div>
+              
+              <div className="flex justify-end">
+                <button onClick={saveCloudConfig} className="text-xs text-indigo-600 font-bold hover:underline">Salvar Configuração</button>
+              </div>
+
+              <hr className="border-gray-100" />
+              
+              <div className="grid grid-cols-2 gap-3">
+                 <button 
+                   onClick={handleCloudUpload}
+                   disabled={isSyncing || !cloudConfig.binId}
+                   className="flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold disabled:opacity-50"
+                 >
+                   {isSyncing ? <RefreshCw className="animate-spin" size={16} /> : <Upload size={16} />} Enviar Dados
+                 </button>
+                 <button 
+                   onClick={handleCloudDownload}
+                   disabled={isSyncing || !cloudConfig.binId}
+                   className="flex items-center justify-center gap-2 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold disabled:opacity-50"
+                 >
+                   {isSyncing ? <RefreshCw className="animate-spin" size={16} /> : <Download size={16} />} Baixar Dados
+                 </button>
+              </div>
+              
+              {lastSync && (
+                <p className="text-center text-xs text-gray-400 mt-2">Última sincronização: {lastSync}</p>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Register Output Modal (Operator & Admin) */}
@@ -906,41 +1154,73 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Share Access Modal */}
+      {/* Share Access Modal (Com Backup Integrado) */}
       {shareModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-               <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Share2 size={20} className="text-teal-600"/> Compartilhar Acesso</h3>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
+               <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Share2 size={20} className="text-teal-600"/> Compartilhar Acesso e Dados</h3>
                <button onClick={() => setShareModalOpen(false)} className="text-gray-500 hover:text-gray-700"><X size={20} /></button>
             </div>
+            
             <div className="p-6 space-y-6">
-               <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex gap-3 items-start">
-                  <AlertTriangle className="text-amber-600 flex-shrink-0 mt-1" size={20} />
-                  <div className="text-sm text-amber-800">
-                    <strong>Importante sobre Dados Locais:</strong><br/>
-                    Este sistema salva os dados <strong>neste computador</strong>. 
-                    Se você abrir o link abaixo em outro PC (como o da secretaria), ele começará <strong>vazio</strong>.
-                    <br/><br/>
-                    <strong>Solução:</strong> Use a opção <strong>"Baixar Backup"</strong> no painel, envie o arquivo para a secretaria e use <strong>"Restaurar Dados"</strong> no computador dela.
-                  </div>
+               <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                  <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
+                    <Database size={16} /> Como funciona o envio?
+                  </h4>
+                  <p className="text-sm text-blue-700">
+                    Como o sistema está no GitHub (Site Estático), os dados ficam no <strong>seu computador</strong>. 
+                    Para o Locutor ver os prêmios, você precisa enviar duas coisas para ele:
+                  </p>
+                  <ol className="list-decimal list-inside text-sm text-blue-700 mt-2 font-medium">
+                    <li>O <strong>Link</strong> de acesso.</li>
+                    <li>O <strong>Arquivo de Dados</strong> (Backup).</li>
+                  </ol>
                </div>
 
-               <div>
-                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Link para Locutor / Operador</label>
-                 <div className="flex gap-2">
-                   <input type="text" readOnly value={getShareLink('OPERATOR')} className="flex-1 bg-gray-50 border border-gray-200 p-2 rounded text-sm text-gray-600" />
-                   <button onClick={() => { navigator.clipboard.writeText(getShareLink('OPERATOR')); alert('Link Copiado!'); }} className="bg-indigo-100 text-indigo-700 px-3 rounded hover:bg-indigo-200"><Copy size={18}/></button>
-                 </div>
-               </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 {/* Lado Esquerdo: Links */}
+                 <div className="space-y-4">
+                   <h5 className="font-bold text-gray-700 text-sm uppercase border-b pb-2">1. Copie o Link</h5>
+                   
+                   <div>
+                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Locutor / Operador</label>
+                     <div className="flex gap-2">
+                       <input type="text" readOnly value={getShareLink('OPERATOR')} className="flex-1 bg-gray-50 border border-gray-200 p-2 rounded text-xs text-gray-600" />
+                       <button onClick={() => { navigator.clipboard.writeText(getShareLink('OPERATOR')); alert('Link Copiado!'); }} className="bg-indigo-100 text-indigo-700 px-3 rounded hover:bg-indigo-200"><Copy size={16}/></button>
+                     </div>
+                   </div>
 
-               <div>
-                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Link para Recepção</label>
-                 <div className="flex gap-2">
-                   <input type="text" readOnly value={getShareLink('RECEPTION')} className="flex-1 bg-gray-50 border border-gray-200 p-2 rounded text-sm text-gray-600" />
-                   <button onClick={() => { navigator.clipboard.writeText(getShareLink('RECEPTION')); alert('Link Copiado!'); }} className="bg-green-100 text-green-700 px-3 rounded hover:bg-green-200"><Copy size={18}/></button>
+                   <div>
+                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Recepção</label>
+                     <div className="flex gap-2">
+                       <input type="text" readOnly value={getShareLink('RECEPTION')} className="flex-1 bg-gray-50 border border-gray-200 p-2 rounded text-xs text-gray-600" />
+                       <button onClick={() => { navigator.clipboard.writeText(getShareLink('RECEPTION')); alert('Link Copiado!'); }} className="bg-green-100 text-green-700 px-3 rounded hover:bg-green-200"><Copy size={16}/></button>
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* Lado Direito: Dados */}
+                 <div className="space-y-4">
+                   <h5 className="font-bold text-gray-700 text-sm uppercase border-b pb-2">2. Envie os Dados</h5>
+                   <p className="text-xs text-gray-500">Envie este arquivo pelo WhatsApp para quem vai usar.</p>
+                   
+                   <button 
+                     onClick={handleDownloadBackup}
+                     className="w-full flex items-center justify-center gap-2 p-4 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg border border-gray-300 transition-colors"
+                   >
+                     <Download size={20} />
+                     <div className="text-left">
+                       <div className="font-bold text-sm">Baixar Arquivo de Dados</div>
+                       <div className="text-xs text-gray-500">radio-backup.json</div>
+                     </div>
+                   </button>
                  </div>
                </div>
+            </div>
+            
+            <div className="p-4 bg-gray-50 rounded-b-xl border-t border-gray-100 text-center">
+              <button onClick={() => setShareModalOpen(false)} className="text-sm font-bold text-gray-500 hover:text-gray-800">Fechar Janela</button>
             </div>
           </div>
         </div>
