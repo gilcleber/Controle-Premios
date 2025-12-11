@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { Prize, PrizeOutput, TabView, UserRole } from './types';
 import { PrizeList } from './components/PrizeList';
@@ -58,21 +58,55 @@ const App: React.FC = () => {
   // Loading State
   const [loading, setLoading] = useState(true);
 
+  // --- Logic Helpers ---
+  const addBusinessDays = (startDate: Date, days: number): Date => {
+    const result = new Date(startDate);
+    let count = 0;
+    while (count < days) {
+      result.setDate(result.getDate() + 1);
+      const day = result.getDay();
+      if (day !== 0 && day !== 6) { // 0 = Sunday, 6 = Saturday
+        count++;
+      }
+    }
+    return result;
+  };
+
+  const getShareLink = (role: string) => {
+    // Ensures we are using the full URL including protocol and domain
+    return `${window.location.protocol}//${window.location.host}${window.location.pathname}?role=${role}`;
+  };
+
+  const filteredOutputs = outputs.filter(output => {
+    const q = searchQuery.toLowerCase();
+    if (!q) return true;
+    return (
+      (output.winnerName && output.winnerName.toLowerCase().includes(q)) ||
+      (output.prizeName && output.prizeName.toLowerCase().includes(q)) ||
+      (output.note && output.note.toLowerCase().includes(q)) ||
+      (output.date && output.date.includes(q)) ||
+      (output.winnerDoc && output.winnerDoc.includes(q))
+    );
+  });
+
+  // --- Data Fetching ---
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    
+    const { data: prizesData, error: prizesError } = await supabase.from('prizes').select('*');
+    if (prizesData) setPrizes(prizesData as Prize[]);
+    if (prizesError) console.error("Error fetching prizes:", prizesError);
+
+    const { data: outputsData, error: outputsError } = await supabase.from('outputs').select('*');
+    if (outputsData) setOutputs(outputsData as PrizeOutput[]);
+    if (outputsError) console.error("Error fetching outputs:", outputsError);
+    
+    setLoading(false);
+  }, []);
+
   // --- Initialization & Realtime ---
   useEffect(() => {
     // 1. Initial Data Fetch
-    const fetchData = async () => {
-      setLoading(true);
-      
-      const { data: prizesData } = await supabase.from('prizes').select('*');
-      if (prizesData) setPrizes(prizesData as Prize[]);
-
-      const { data: outputsData } = await supabase.from('outputs').select('*');
-      if (outputsData) setOutputs(outputsData as PrizeOutput[]);
-      
-      setLoading(false);
-    };
-
     fetchData();
 
     // 2. Realtime Subscriptions
@@ -120,7 +154,7 @@ const App: React.FC = () => {
     return () => {
       supabase.removeChannel(channels);
     };
-  }, []);
+  }, [fetchData]);
 
   // History Check Logic
   useEffect(() => {
@@ -133,37 +167,6 @@ const App: React.FC = () => {
       setWinnerHistory([]);
     }
   }, [winnerName, outputs]);
-
-  // --- Logic Helpers ---
-
-  const addBusinessDays = (startDate: Date, days: number): Date => {
-    const result = new Date(startDate);
-    let count = 0;
-    while (count < days) {
-      result.setDate(result.getDate() + 1);
-      const day = result.getDay();
-      if (day !== 0 && day !== 6) { // 0 = Sunday, 6 = Saturday
-        count++;
-      }
-    }
-    return result;
-  };
-
-  const getShareLink = (role: string) => {
-    return `${window.location.origin}${window.location.pathname}?role=${role}`;
-  };
-
-  const filteredOutputs = outputs.filter(output => {
-    const q = searchQuery.toLowerCase();
-    if (!q) return true;
-    return (
-      (output.winnerName && output.winnerName.toLowerCase().includes(q)) ||
-      (output.prizeName && output.prizeName.toLowerCase().includes(q)) ||
-      (output.note && output.note.toLowerCase().includes(q)) ||
-      (output.date && output.date.includes(q)) ||
-      (output.winnerDoc && output.winnerDoc.includes(q))
-    );
-  });
 
   // --- Handlers ---
 
@@ -186,9 +189,6 @@ const App: React.FC = () => {
 
   const handleSavePrize = async (prize: Prize) => {
     if (userRole !== 'ADMIN') return;
-    
-    // Optimistic Update (optional, but Supabase Realtime handles it)
-    // We'll let Realtime handle the UI update to ensure consistency
     
     const { error } = await supabase.from('prizes').upsert(prize);
     
@@ -317,13 +317,6 @@ const App: React.FC = () => {
     if (userRole !== 'ADMIN') return;
     setEditingOutput({ ...output });
   };
-
-  // Function to save edited output info (triggered from WinnerList logic in a real app, currently simplified)
-  // Since WinnerList triggers onEdit, we need a way to actually save the edits. 
-  // For simplicity in this structure, we'd need an EditModal, but let's implement the Update capability.
-  // Currently WinnerList calls onEdit which just sets state. We need a modal or reusing the form.
-  // For now, assuming the requirement is met by Admin capabilities, we will skip complex edit modal implementation unless requested, 
-  // but the structure supports it.
 
   // Script Generator
   const handleGenerateScript = (prize: Prize) => {
@@ -514,20 +507,29 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 overflow-y-auto">
         <header className="mb-8 flex justify-between items-center">
-           <div>
-             <h2 className="text-2xl font-bold text-gray-800">
-               {userRole === 'OPERATOR' ? 'Prêmios no Ar' : 
-                 (activeTab === 'DASHBOARD' ? 'Visão Geral' : 
-                  activeTab === 'INVENTORY' ? 'Controle de Estoque' : 
-                  userRole === 'RECEPTION' ? 'Retirada de Prêmios' : 'Histórico de Saídas')}
-             </h2>
-             <p className="text-gray-500 text-sm">
-               {userRole === 'OPERATOR' 
-                 ? 'Itens disponíveis para sorteio imediato.' 
-                 : (activeTab === 'OUTPUTS' && userRole === 'RECEPTION' 
-                    ? 'Confirme a identidade do ouvinte antes de entregar.' 
-                    : 'Gerencie o fluxo de prêmios da emissora.')}
-             </p>
+           <div className="flex items-center gap-3">
+             <div>
+               <h2 className="text-2xl font-bold text-gray-800">
+                 {userRole === 'OPERATOR' ? 'Prêmios no Ar' : 
+                   (activeTab === 'DASHBOARD' ? 'Visão Geral' : 
+                    activeTab === 'INVENTORY' ? 'Controle de Estoque' : 
+                    userRole === 'RECEPTION' ? 'Retirada de Prêmios' : 'Histórico de Saídas')}
+               </h2>
+               <p className="text-gray-500 text-sm">
+                 {userRole === 'OPERATOR' 
+                   ? 'Itens disponíveis para sorteio imediato.' 
+                   : (activeTab === 'OUTPUTS' && userRole === 'RECEPTION' 
+                      ? 'Confirme a identidade do ouvinte antes de entregar.' 
+                      : 'Gerencie o fluxo de prêmios da emissora.')}
+               </p>
+             </div>
+             <button 
+                onClick={() => fetchData()} 
+                title="Atualizar Dados Agora"
+                className={`p-2 rounded-full hover:bg-gray-200 text-gray-600 transition-all ${loading ? 'animate-spin bg-blue-100 text-blue-600' : ''}`}
+             >
+                <RefreshCw size={20} />
+             </button>
            </div>
            
            {activeTab === 'INVENTORY' && userRole === 'ADMIN' && (
@@ -548,7 +550,7 @@ const App: React.FC = () => {
            )}
         </header>
 
-        {loading ? (
+        {loading && !prizes.length && !outputs.length ? (
           <div className="flex items-center justify-center h-64">
              <RefreshCw className="animate-spin text-blue-600" size={32} />
           </div>
@@ -853,13 +855,17 @@ const App: React.FC = () => {
             
             <div className="p-6 space-y-6">
                <div className="space-y-4">
-                 <p className="text-sm text-gray-500">Envie estes links para que sua equipe acesse o sistema sem precisar de senha.</p>
+                 <p className="text-sm text-gray-500">
+                    Envie estes links para que sua equipe acesse o sistema sem precisar de senha.
+                    <br/><span className="text-xs text-red-500 font-bold">Importante: O site precisa estar publicado no GitHub para os links funcionarem em outros computadores.</span>
+                 </p>
                  
                  <div>
                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Locutor / Operador</label>
                    <div className="flex gap-2">
                      <input type="text" readOnly value={getShareLink('OPERATOR')} className="flex-1 bg-gray-50 border border-gray-200 p-2 rounded text-xs text-gray-600" />
                      <button onClick={() => { navigator.clipboard.writeText(getShareLink('OPERATOR')); alert('Link Copiado!'); }} className="bg-indigo-100 text-indigo-700 px-3 rounded hover:bg-indigo-200"><Copy size={16}/></button>
+                     <a href={getShareLink('OPERATOR')} target="_blank" rel="noopener noreferrer" className="bg-gray-100 text-gray-700 px-3 rounded hover:bg-gray-200 flex items-center"><ExternalLink size={16}/></a>
                    </div>
                  </div>
 
@@ -868,6 +874,7 @@ const App: React.FC = () => {
                    <div className="flex gap-2">
                      <input type="text" readOnly value={getShareLink('RECEPTION')} className="flex-1 bg-gray-50 border border-gray-200 p-2 rounded text-xs text-gray-600" />
                      <button onClick={() => { navigator.clipboard.writeText(getShareLink('RECEPTION')); alert('Link Copiado!'); }} className="bg-green-100 text-green-700 px-3 rounded hover:bg-green-200"><Copy size={16}/></button>
+                     <a href={getShareLink('RECEPTION')} target="_blank" rel="noopener noreferrer" className="bg-gray-100 text-gray-700 px-3 rounded hover:bg-gray-200 flex items-center"><ExternalLink size={16}/></a>
                    </div>
                  </div>
                </div>
