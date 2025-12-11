@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Prize, UserRole } from '../types';
-import { Edit2, Trash2, ArrowDownCircle, AlertTriangle, Calendar, FileText, Gift, Radio } from 'lucide-react';
+import { Edit2, Trash2, Trophy, AlertTriangle, Calendar, FileText, Gift, Radio, Eye, EyeOff } from 'lucide-react';
 
 interface PrizeListProps {
   prizes: Prize[];
@@ -10,9 +10,10 @@ interface PrizeListProps {
   onDelete: (id: string) => void;
   onDraw: (prize: Prize) => void;
   onGenerateScript: (prize: Prize) => void;
+  onToggleOnAir?: (prize: Prize) => void; // Nova função para alternar status
 }
 
-export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDelete, onDraw, onGenerateScript }) => {
+export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDelete, onDraw, onGenerateScript, onToggleOnAir }) => {
   const isExpired = (dateString: string) => {
     return new Date(dateString) < new Date();
   };
@@ -20,13 +21,14 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
   const isAdmin = role === 'ADMIN';
   const isOperator = role === 'OPERATOR';
 
-  // --- Operator View: CARDS ONLY ---
+  // --- Operator View: CARDS ONLY (Filtered by isOnAir) ---
   if (isOperator) {
     const availablePrizes = prizes.filter(p => {
       const expiredDraw = isExpired(p.maxDrawDate);
       const expiredValidity = isExpired(p.validityDate);
       const hasStock = p.availableQuantity > 0;
-      return hasStock && !expiredDraw && !expiredValidity;
+      // CRITICAL: Operator ONLY sees items marked as On Air
+      return hasStock && !expiredDraw && !expiredValidity && p.isOnAir;
     });
 
     return (
@@ -34,12 +36,13 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
         {availablePrizes.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-dashed border-gray-300 text-gray-500">
             <Radio size={48} className="mb-4 opacity-20" />
-            <p className="text-lg font-medium">Nenhum prêmio disponível para sorteio agora.</p>
+            <p className="text-lg font-medium text-center">Nenhum prêmio disponível para sorteio neste momento.</p>
+            <p className="text-sm text-center opacity-70">Aguarde o administrador liberar os itens.</p>
           </div>
         ) : (
           availablePrizes.map(prize => (
             <div key={prize.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all transform hover:-translate-y-1">
-              <div className="h-2 bg-indigo-500 w-full"></div>
+              <div className="h-2 bg-indigo-500 w-full animate-pulse"></div>
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div className="bg-indigo-50 text-indigo-700 p-2 rounded-lg">
@@ -68,7 +71,7 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
                     onClick={() => onDraw(prize)}
                     className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-colors"
                   >
-                    <ArrowDownCircle size={20} /> SORTEAR AGORA
+                    <Trophy size={20} /> REGISTRAR GANHADOR
                   </button>
                 </div>
               </div>
@@ -86,6 +89,7 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold">
+              <th className="p-4">No Ar?</th>
               <th className="p-4">Prêmio</th>
               <th className="p-4 text-center">Estoque</th>
               <th className="p-4">Datas Críticas</th>
@@ -95,7 +99,7 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
           <tbody className="divide-y divide-gray-100">
             {prizes.length === 0 ? (
               <tr>
-                <td colSpan={4} className="p-8 text-center text-gray-500">
+                <td colSpan={5} className="p-8 text-center text-gray-500">
                   Nenhum prêmio cadastrado.
                 </td>
               </tr>
@@ -107,6 +111,18 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
                 
                 return (
                   <tr key={prize.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-4">
+                      {isAdmin && onToggleOnAir && (
+                        <button 
+                          onClick={() => onToggleOnAir(prize)}
+                          className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-all ${prize.isOnAir ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                          title={prize.isOnAir ? "Visível para Locutor" : "Oculto do Locutor"}
+                        >
+                          {prize.isOnAir ? <Radio size={20} className="animate-pulse" /> : <Radio size={20} />}
+                          <span className="text-[10px] font-bold">{prize.isOnAir ? 'NO AR' : 'OFF'}</span>
+                        </button>
+                      )}
+                    </td>
                     <td className="p-4">
                       <div className="font-semibold text-gray-900">{prize.name}</div>
                       <div className="text-sm text-gray-500 line-clamp-1">{prize.description}</div>
@@ -154,9 +170,9 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
                           onClick={() => onDraw(prize)}
                           disabled={!hasStock || expiredDraw || expiredValidity}
                           className="p-2 text-green-600 hover:bg-green-50 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                          title="Registrar Ganhador / Baixa"
+                          title="Registrar Ganhador"
                         >
-                          <ArrowDownCircle size={18} />
+                          <Trophy size={18} />
                         </button>
 
                         {isAdmin && (

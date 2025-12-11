@@ -9,6 +9,7 @@ export interface Prize {
   validityDate: string; // ISO Date - Validade do produto
   maxDrawDate: string; // ISO Date - Prazo máximo para sortear
   pickupDeadlineDays: number; // Dias úteis para retirada
+  isOnAir?: boolean; // Se true, aparece na tela do locutor
 }
 
 export interface PrizeOutput {

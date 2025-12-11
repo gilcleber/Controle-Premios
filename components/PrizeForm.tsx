@@ -1,15 +1,17 @@
+
 import React, { useState, useEffect } from 'react';
 import { Prize } from '../types';
 import { generatePrizeScript } from '../services/geminiService';
-import { Sparkles, Loader2, Save, X } from 'lucide-react';
+import { Sparkles, Loader2, Save, X, Radio } from 'lucide-react';
 
 interface PrizeFormProps {
   initialData?: Prize;
   onSave: (prize: Prize) => void;
   onCancel: () => void;
+  forceOnAir?: boolean; // Se true, já vem marcado para ir pro ar
 }
 
-export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, onSave, onCancel }) => {
+export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, onSave, onCancel, forceOnAir = false }) => {
   const [formData, setFormData] = useState<Partial<Prize>>({
     name: '',
     description: '',
@@ -19,6 +21,7 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, onSave, onCan
     validityDate: '',
     maxDrawDate: '',
     pickupDeadlineDays: 3,
+    isOnAir: forceOnAir,
   });
 
   const [aiScript, setAiScript] = useState('');
@@ -27,14 +30,24 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, onSave, onCan
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
+    } else if (forceOnAir) {
+      setFormData(prev => ({ ...prev, isOnAir: true }));
     }
-  }, [initialData]);
+  }, [initialData, forceOnAir]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: name === 'totalQuantity' || name === 'pickupDeadlineDays' ? parseInt(value) || 0 : value
+    }));
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: checked
     }));
   };
 
@@ -48,24 +61,20 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, onSave, onCan
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Logic to sync available quantity if it's a new item or if total changed significantly
-    // For simplicity, if it's new, available = total. 
-    // If editing, we assume the user manages quantities carefully or we calculate difference.
-    // Here we strictly follow the form state for simplicity in this demo.
     
     const quantity = formData.totalQuantity || 1;
     
-    // If it's a new record
     const prizeToSave: Prize = {
       id: initialData?.id || crypto.randomUUID(),
       name: formData.name || 'Sem nome',
       description: formData.description || '',
       totalQuantity: quantity,
-      availableQuantity: initialData ? initialData.availableQuantity : quantity, // Preserve available count on edit, else set to total
+      availableQuantity: initialData ? initialData.availableQuantity : quantity,
       entryDate: formData.entryDate || new Date().toISOString(),
       validityDate: formData.validityDate || '',
       maxDrawDate: formData.maxDrawDate || '',
       pickupDeadlineDays: formData.pickupDeadlineDays || 3,
+      isOnAir: formData.isOnAir || false,
     };
     onSave(prizeToSave);
   };
@@ -73,9 +82,10 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, onSave, onCan
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-800">
-            {initialData ? 'Editar Prêmio' : 'Novo Prêmio'}
+        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-blue-50 rounded-t-xl">
+          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            {initialData ? <Edit2 size={20}/> : (forceOnAir ? <Radio size={20}/> : <Plus size={20}/>)}
+            {initialData ? 'Editar Prêmio' : (forceOnAir ? 'Sorteio Rápido (Já no Ar)' : 'Cadastrar Estoque')}
           </h2>
           <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
             <X size={24} />
@@ -83,6 +93,28 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, onSave, onCan
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          
+          {/* On Air Toggle Switch */}
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex items-center justify-between">
+            <div>
+              <span className="block font-bold text-gray-800 flex items-center gap-2">
+                <Radio size={18} className={formData.isOnAir ? "text-blue-600" : "text-gray-400"} />
+                Disponível no Ar?
+              </span>
+              <span className="text-xs text-gray-500">Se marcado, aparece na tela do locutor imediatamente.</span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                name="isOnAir" 
+                checked={!!formData.isOnAir}
+                onChange={handleCheckboxChange}
+                className="sr-only peer" 
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Prêmio</label>
@@ -109,7 +141,6 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, onSave, onCan
               />
             </div>
 
-            {/* AI Assistant Section */}
             <div className="col-span-2 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="text-indigo-800 font-medium flex items-center gap-2">
@@ -213,3 +244,6 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, onSave, onCan
     </div>
   );
 };
+
+// Imports needed for icons used above (added manually to ensure no breaking changes)
+import { Plus, Edit2 } from 'lucide-react';

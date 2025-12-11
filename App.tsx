@@ -4,7 +4,7 @@ import { Prize, PrizeOutput, TabView, UserRole } from './types';
 import { PrizeList } from './components/PrizeList';
 import { PrizeForm } from './components/PrizeForm';
 import { WinnerList } from './components/WinnerList';
-import { LayoutDashboard, Gift, Users, Plus, Radio, ClipboardList, LogOut, Copy, X, Save, History, AlertTriangle, UserCog, Shield, User, Share2, Lock, Link as LinkIcon, Download, Upload, Database, FileUp, CheckCircle, Cloud, RefreshCw, Search, Key, Globe, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, Gift, Users, Plus, Radio, ClipboardList, LogOut, Copy, X, Save, History, AlertTriangle, UserCog, Shield, User, Share2, Lock, Link as LinkIcon, Download, Upload, Database, FileUp, CheckCircle, Cloud, RefreshCw, Search, Key, Globe, ExternalLink, Trophy, PackagePlus, Zap } from 'lucide-react';
 
 const App: React.FC = () => {
   // --- Auth State ---
@@ -19,6 +19,7 @@ const App: React.FC = () => {
   
   // --- UI State ---
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formIsQuickDraw, setFormIsQuickDraw] = useState(false); // New state to control if form is for quick draw
   const [editingPrize, setEditingPrize] = useState<Prize | undefined>(undefined);
   
   // Output/Exit Modal State
@@ -54,7 +55,7 @@ const App: React.FC = () => {
   
   // Import/Restore State
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const loginFileInputRef = useRef<HTMLInputElement>(null); // For loading data at login screen
+  const loginFileInputRef = useRef<HTMLInputElement>(null);
 
   // --- Initialization & Persistence ---
   useEffect(() => {
@@ -196,7 +197,6 @@ const App: React.FC = () => {
            alert('Dados atualizados da nuvem com sucesso!');
            setCloudModalOpen(false);
         } else {
-           // Case where bin exists but is empty
            if (Object.keys(data).length === 0) {
              alert('O Bin da nuvem está vazio. Faça o primeiro envio (Upload) para começar.');
            } else {
@@ -242,6 +242,7 @@ const App: React.FC = () => {
     }
     setIsFormOpen(false);
     setEditingPrize(undefined);
+    setFormIsQuickDraw(false);
   };
 
   const handleDeletePrize = (id: string) => {
@@ -254,7 +255,13 @@ const App: React.FC = () => {
   const handleEditPrize = (prize: Prize) => {
     if (userRole !== 'ADMIN') return;
     setEditingPrize(prize);
+    setFormIsQuickDraw(false);
     setIsFormOpen(true);
+  };
+
+  const handleToggleOnAir = (prize: Prize) => {
+    if (userRole !== 'ADMIN') return;
+    setPrizes(prev => prev.map(p => p.id === prize.id ? { ...p, isOnAir: !p.isOnAir } : p));
   };
 
   // Output / Baixa Logic
@@ -321,7 +328,6 @@ const App: React.FC = () => {
   };
 
   const handleConfirmPickup = (outputId: string) => {
-    // Reception and Admin can confirm pickup
     if (userRole === 'OPERATOR') return;
 
     if (confirm('Confirmar entrega/retirada destes itens?')) {
@@ -451,7 +457,6 @@ const App: React.FC = () => {
             <h1 className="text-3xl font-bold mb-2">RadioPrize</h1>
             <p className="opacity-80">Sistema de Controle de Prêmios e Promoções</p>
             
-            {/* Cloud Update Button for Login Screen */}
             {cloudConfig.apiKey && cloudConfig.binId && (
               <button
                 onClick={handleCloudDownload}
@@ -557,8 +562,6 @@ const App: React.FC = () => {
     );
   }
 
-  // --- Main App ---
-
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
       {/* Sidebar Navigation */}
@@ -616,7 +619,7 @@ const App: React.FC = () => {
             <div className="bg-slate-800/50 rounded-lg p-4 mb-4 border border-slate-700">
                <h3 className="text-slate-400 text-xs font-bold uppercase mb-2">Modo No Ar</h3>
                <p className="text-sm text-slate-300">
-                 Visualize apenas os prêmios disponíveis para sorteio agora.
+                 Visualize apenas os prêmios liberados para sorteio.
                </p>
             </div>
           )}
@@ -632,7 +635,6 @@ const App: React.FC = () => {
           )}
 
           <div className="mt-auto">
-             {/* Global Cloud Button for all Roles */}
              <button
                 onClick={() => userRole === 'ADMIN' ? setCloudModalOpen(true) : handleCloudDownload()}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-indigo-400 hover:bg-indigo-900/20 hover:text-indigo-300 transition-colors mb-2"
@@ -672,15 +674,24 @@ const App: React.FC = () => {
            </div>
            
            {activeTab === 'INVENTORY' && userRole === 'ADMIN' && (
-             <button
-               onClick={() => { setEditingPrize(undefined); setIsFormOpen(true); }}
-               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-lg shadow-blue-200 transition-all"
-             >
-               <Plus size={20} /> Novo Prêmio
-             </button>
+             <div className="flex gap-2">
+                <button
+                 onClick={() => { setEditingPrize(undefined); setFormIsQuickDraw(true); setIsFormOpen(true); }}
+                 className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 shadow-lg shadow-indigo-200 transition-all font-semibold"
+               >
+                 <Zap size={18} /> Sorteio Rápido (Já no Ar)
+               </button>
+               <button
+                 onClick={() => { setEditingPrize(undefined); setFormIsQuickDraw(false); setIsFormOpen(true); }}
+                 className="bg-white text-blue-600 border border-blue-200 px-4 py-2 rounded-lg hover:bg-blue-50 flex items-center gap-2 transition-all font-semibold"
+               >
+                 <PackagePlus size={18} /> Cadastrar Estoque
+               </button>
+             </div>
            )}
         </header>
 
+        {/* ... (Existing Dashboard Code) ... */}
         {activeTab === 'DASHBOARD' && userRole === 'ADMIN' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -782,12 +793,13 @@ const App: React.FC = () => {
             onEdit={handleEditPrize} 
             onDraw={openOutputModal}
             onGenerateScript={handleGenerateScript}
+            onToggleOnAir={handleToggleOnAir}
           />
         )}
 
+        {/* ... (Existing Output List) ... */}
         {(activeTab === 'OUTPUTS' || userRole === 'RECEPTION') && (
           <div>
-            {/* Search Bar for Output History */}
             <div className="mb-4 flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm max-w-md">
               <Search size={20} className="text-gray-400 ml-2" />
               <input 
@@ -821,6 +833,7 @@ const App: React.FC = () => {
           initialData={editingPrize}
           onSave={handleSavePrize}
           onCancel={() => { setIsFormOpen(false); setEditingPrize(undefined); }}
+          forceOnAir={formIsQuickDraw}
         />
       )}
 
@@ -907,7 +920,7 @@ const App: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8">
              <div className="p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl">
-               <h3 className="text-xl font-bold text-gray-800">Registrar Ganhador</h3>
+               <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Trophy size={20} className="text-indigo-600"/> Registrar Ganhador</h3>
                <p className="text-sm text-gray-600 mt-1">
                  Prêmio: <span className="font-bold text-blue-600">{selectedPrizeForOutput.name}</span>
                </p>
@@ -1030,7 +1043,7 @@ const App: React.FC = () => {
                      type="submit"
                      className="flex-1 py-3 text-white bg-green-600 rounded-lg hover:bg-green-700 flex justify-center items-center gap-2 font-bold shadow-lg shadow-green-200"
                    >
-                     <LogOut size={18} /> Confirmar Ganhador
+                     <Trophy size={18} /> Confirmar
                    </button>
                 </div>
              </form>
@@ -1038,123 +1051,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Output Modal (Admin Only) */}
-      {editingOutput && userRole === 'ADMIN' && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8">
-             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
-               <h3 className="text-lg font-bold text-gray-800">Editar Dados do Ganhador</h3>
-               <button onClick={() => setEditingOutput(null)} className="text-gray-500 hover:text-gray-700"><X size={20} /></button>
-             </div>
-             <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Evento / Programa</label>
-                  <input 
-                    type="text" 
-                    value={editingOutput.note}
-                    onChange={e => setEditingOutput({ ...editingOutput, note: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome</label>
-                  <input 
-                    type="text" 
-                    value={editingOutput.winnerName}
-                    onChange={e => setEditingOutput({ ...editingOutput, winnerName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone</label>
-                    <input 
-                      type="text" 
-                      value={editingOutput.winnerPhone}
-                      onChange={e => setEditingOutput({ ...editingOutput, winnerPhone: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                   </div>
-                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">CPF / RG</label>
-                    <input 
-                      type="text" 
-                      value={editingOutput.winnerDoc || ''}
-                      onChange={e => setEditingOutput({ ...editingOutput, winnerDoc: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                   </div>
-                </div>
-
-                <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
-                    <input 
-                      type="text" 
-                      value={editingOutput.winnerEmail || ''}
-                      onChange={e => setEditingOutput({ ...editingOutput, winnerEmail: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Endereço</label>
-                    <input 
-                      type="text" 
-                      value={editingOutput.winnerAddress || ''}
-                      onChange={e => setEditingOutput({ ...editingOutput, winnerAddress: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                   <button 
-                     onClick={() => setEditingOutput(null)}
-                     className="flex-1 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
-                   >
-                     Cancelar
-                   </button>
-                   <button 
-                     onClick={handleSaveOutputEdit}
-                     className="flex-1 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex justify-center items-center gap-2"
-                   >
-                     <Save size={16} /> Salvar Alteração
-                   </button>
-                </div>
-             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Script Modal */}
-      {scriptModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl">
-             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-               <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Radio size={20} className="text-blue-600"/> Texto para Locução</h3>
-               <button onClick={() => setScriptModalOpen(false)} className="text-gray-500 hover:text-gray-700"><X size={20} /></button>
-             </div>
-             <div className="p-6">
-                <textarea 
-                  readOnly
-                  className="w-full h-64 p-4 border border-gray-200 rounded-lg bg-gray-50 text-sm font-mono focus:outline-none resize-none"
-                  value={generatedScript}
-                />
-                <div className="flex justify-end mt-4">
-                  <button 
-                    onClick={copyToClipboard}
-                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 shadow-lg shadow-indigo-200"
-                  >
-                    <Copy size={18} /> Copiar Texto
-                  </button>
-                </div>
-             </div>
-           </div>
-        </div>
-      )}
-
-      {/* Share Access Modal (Com Backup Integrado) */}
+      {/* Share/Backup Modal ... (Existing Code) */}
       {shareModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl">
@@ -1169,13 +1066,12 @@ const App: React.FC = () => {
                     <Database size={16} /> Como funciona o envio?
                   </h4>
                   <p className="text-sm text-blue-700">
-                    Como o sistema está no GitHub (Site Estático), os dados ficam no <strong>seu computador</strong>. 
-                    Para o Locutor ver os prêmios, você precisa enviar duas coisas para ele:
+                    O sistema funciona localmente no seu navegador. Para sincronizar com outras máquinas:
                   </p>
-                  <ol className="list-decimal list-inside text-sm text-blue-700 mt-2 font-medium">
-                    <li>O <strong>Link</strong> de acesso.</li>
-                    <li>O <strong>Arquivo de Dados</strong> (Backup).</li>
-                  </ol>
+                  <ul className="list-disc list-inside text-sm text-blue-700 mt-2 font-medium">
+                    <li>Opção A: Use o botão <strong>Nuvem / Sync</strong> (Configuração única).</li>
+                    <li>Opção B: Baixe o arquivo de backup abaixo e envie por WhatsApp.</li>
+                  </ul>
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1202,8 +1098,7 @@ const App: React.FC = () => {
 
                  {/* Lado Direito: Dados */}
                  <div className="space-y-4">
-                   <h5 className="font-bold text-gray-700 text-sm uppercase border-b pb-2">2. Envie os Dados</h5>
-                   <p className="text-xs text-gray-500">Envie este arquivo pelo WhatsApp para quem vai usar.</p>
+                   <h5 className="font-bold text-gray-700 text-sm uppercase border-b pb-2">2. Envie os Dados (Opção B)</h5>
                    
                    <button 
                      onClick={handleDownloadBackup}
