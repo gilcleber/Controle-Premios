@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { Prize, PrizeOutput, TabView, UserRole } from './types';
@@ -498,7 +499,7 @@ const App: React.FC = () => {
           <div className="mt-auto">
              <div className="px-4 py-2 mb-2 text-xs text-slate-500 flex items-center gap-1">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                Online (Supabase)
+                Sistema Online
              </div>
             <button
               onClick={handleLogout}
