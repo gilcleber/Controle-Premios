@@ -48,14 +48,17 @@ const App: React.FC = () => {
   
   // Cloud / Sync State
   const [cloudModalOpen, setCloudModalOpen] = useState(false);
-  const [cloudConfig, setCloudConfig] = useState({ binId: '', apiKey: '' });
+  // PRE-CONFIGURED CREDENTIALS
+  const [cloudConfig, setCloudConfig] = useState({ 
+    binId: '693a039dd0ea881f40207c9e', 
+    apiKey: '$2a$10$r/SERPevsqHoNUM1D4qG1OXTYOCSZcHCs.8oB98mGebU.M9M72FdC' 
+  });
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Import/Restore State
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const loginFileInputRef = useRef<HTMLInputElement>(null);
 
   // --- Initialization & Persistence ---
   useEffect(() => {
@@ -67,7 +70,9 @@ const App: React.FC = () => {
 
     if (savedPrizes) setPrizes(JSON.parse(savedPrizes));
     if (savedOutputs) setOutputs(JSON.parse(savedOutputs));
-    if (savedCloud) setCloudConfig(JSON.parse(savedCloud));
+    // We prioritize the hardcoded config, but if user manually changed it locally, we respect it (optional)
+    // For now, we stick to the hardcoded defaults in useState unless strictly needed.
+    // if (savedCloud) setCloudConfig(JSON.parse(savedCloud)); 
     if (savedLastSync) setLastSync(savedLastSync);
 
     // 2. Check URL for Magic Links
@@ -445,82 +450,50 @@ const App: React.FC = () => {
 
   // --- Login Screen ---
   if (!userRole) {
-    const hasData = prizes.length > 0 || outputs.length > 0;
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col md:flex-row">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col md:flex-row min-h-[400px]">
+          {/* LADO ESQUERDO: LOGO E SYNC */}
           <div className="bg-blue-600 p-8 md:w-2/5 flex flex-col justify-center items-center text-white text-center">
             <div className="bg-white/20 p-4 rounded-full mb-6">
               <Radio size={48} />
             </div>
             <h1 className="text-3xl font-bold mb-2">RadioPrize</h1>
-            <p className="opacity-80">Sistema de Controle de Prêmios e Promoções</p>
+            <p className="opacity-80 mb-8">Gestão de Promoções</p>
             
+            {/* Sync Button is vital for first load if DB is empty */}
             {cloudConfig.apiKey && cloudConfig.binId && (
               <button
                 onClick={handleCloudDownload}
-                className="mt-6 w-full bg-white/20 hover:bg-white/30 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                className="w-full bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg"
               >
-                {isSyncing ? <RefreshCw className="animate-spin" size={16}/> : <Cloud size={16}/>}
+                {isSyncing ? <RefreshCw className="animate-spin" size={18}/> : <Cloud size={18}/>}
                 Atualizar da Nuvem
               </button>
             )}
-
-            {!hasData && (
-              <div className="mt-8 p-4 bg-blue-700/50 rounded-lg border border-blue-400/30 w-full">
-                <p className="text-sm font-bold mb-2 flex items-center justify-center gap-2">
-                  <Database size={16} /> Banco de Dados Vazio
-                </p>
-                <p className="text-xs opacity-80 mb-3">
-                  Se você recebeu o arquivo de dados do administrador, carregue-o aqui.
-                </p>
-                <label className="bg-white text-blue-700 px-4 py-2 rounded-lg font-bold text-sm cursor-pointer hover:bg-blue-50 transition-colors w-full flex items-center justify-center gap-2">
-                  <Upload size={14} /> Carregar Dados
-                  <input 
-                    type="file" 
-                    ref={loginFileInputRef}
-                    onChange={(e) => handleRestoreBackup(e, true)}
-                    accept=".json" 
-                    className="hidden" 
-                  />
-                </label>
-              </div>
-            )}
           </div>
           
-          <div className="p-8 md:w-3/5 relative">
+          {/* LADO DIREITO: LOGIN ADMIN */}
+          <div className="p-8 md:w-3/5 flex flex-col justify-center">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-              {showAdminLogin ? 'Área Administrativa' : 'Quem é você?'}
+              {showAdminLogin ? 'Área Administrativa' : 'Bem-vindo'}
             </h2>
             
             {!showAdminLogin ? (
               <div className="space-y-4">
                 <button 
                   onClick={() => setShowAdminLogin(true)}
-                  className="w-full p-4 border border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all flex items-center gap-4 group"
+                  className="w-full p-6 border border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all flex items-center gap-4 group shadow-sm hover:shadow-md"
                 >
-                  <div className="bg-blue-100 text-blue-600 p-3 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                    <Shield size={24} />
+                  <div className="bg-blue-100 text-blue-600 p-4 rounded-full group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                    <Shield size={32} />
                   </div>
                   <div className="text-left">
-                    <div className="font-bold text-gray-800">Administrador</div>
-                    <div className="text-sm text-gray-500">Acesso total (Requer Senha)</div>
+                    <div className="font-bold text-gray-800 text-lg">Entrar como Administrador</div>
+                    <div className="text-sm text-gray-500">Acesso ao painel de controle</div>
                   </div>
                 </button>
-
-                <div className="relative py-2">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-100"></div>
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-2 text-gray-400">Links de Acesso</span>
-                  </div>
-                </div>
-
-                <div className="text-center p-4 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-500 text-sm">
-                   Para acessar como <strong>Locutor</strong> ou <strong>Recepção</strong>, utilize o link compartilhado pelo administrador ou carregue os dados ao lado se for seu primeiro acesso.
-                </div>
               </div>
             ) : (
               <form onSubmit={handleAdminLoginAttempt} className="space-y-4">
@@ -537,9 +510,8 @@ const App: React.FC = () => {
                     />
                     <Lock size={18} className="absolute left-3 top-3.5 text-gray-400" />
                   </div>
-                  <p className="text-xs text-gray-400 mt-2 text-center">Dica: A senha padrão é 0000</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-3 pt-2">
                   <button 
                     type="button" 
                     onClick={() => { setShowAdminLogin(false); setAdminPassword(''); }}
@@ -549,9 +521,9 @@ const App: React.FC = () => {
                   </button>
                   <button 
                     type="submit" 
-                    className="flex-1 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-bold"
+                    className="flex-1 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-bold shadow-lg shadow-blue-200"
                   >
-                    Entrar
+                    Acessar
                   </button>
                 </div>
               </form>
@@ -847,27 +819,9 @@ const App: React.FC = () => {
             </div>
             
             <div className="p-6 space-y-4">
-              <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-lg text-sm text-indigo-800 space-y-2">
-                <p className="font-bold flex items-center gap-2"><ExternalLink size={14}/> Como configurar (Passo a Passo):</p>
-                <ol className="list-decimal list-inside space-y-1 text-xs">
-                  <li>No site JSONBin, clique em <strong>API KEYS</strong> no menu lateral e copie a chave Mestra.</li>
-                  <li>Clique em <strong>BINS</strong>, crie um novo. No editor, apague tudo e cole: <code>{`{"prizes": [], "outputs": []}`}</code> e clique em <strong>Save Bin</strong>.</li>
-                  <li>Copie o código <strong>Bin ID</strong> gerado no topo da página.</li>
-                </ol>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Master API Key (X-Master-Key)</label>
-                <div className="flex gap-2">
-                   <Key size={16} className="text-gray-400 mt-2"/>
-                   <input 
-                    type="password" 
-                    value={cloudConfig.apiKey}
-                    onChange={e => setCloudConfig(prev => ({...prev, apiKey: e.target.value}))}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    placeholder="Sua chave API do JSONBin"
-                   />
-                </div>
+              <div className="bg-green-50 border border-green-100 p-4 rounded-lg text-sm text-green-800 flex items-center gap-2">
+                 <CheckCircle size={16} />
+                 <span>As credenciais da nuvem já estão configuradas pelo sistema.</span>
               </div>
 
               <div>
@@ -877,17 +831,12 @@ const App: React.FC = () => {
                    <input 
                     type="text" 
                     value={cloudConfig.binId}
-                    onChange={e => setCloudConfig(prev => ({...prev, binId: e.target.value}))}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    placeholder="ID do seu Bin (Ex: 673b...)"
+                    readOnly
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-100 text-gray-500"
                    />
                 </div>
               </div>
               
-              <div className="flex justify-end">
-                <button onClick={saveCloudConfig} className="text-xs text-indigo-600 font-bold hover:underline">Salvar Configuração</button>
-              </div>
-
               <hr className="border-gray-100" />
               
               <div className="grid grid-cols-2 gap-3">
@@ -1069,7 +1018,7 @@ const App: React.FC = () => {
                     O sistema funciona localmente no seu navegador. Para sincronizar com outras máquinas:
                   </p>
                   <ul className="list-disc list-inside text-sm text-blue-700 mt-2 font-medium">
-                    <li>Opção A: Use o botão <strong>Nuvem / Sync</strong> (Configuração única).</li>
+                    <li>Opção A: Use o botão <strong>Nuvem / Sync</strong> (Configurado automaticamente).</li>
                     <li>Opção B: Baixe o arquivo de backup abaixo e envie por WhatsApp.</li>
                   </ul>
                </div>
