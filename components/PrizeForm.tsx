@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { Prize } from '../types';
 import { generatePrizeScript } from '../services/geminiService';
-import { Sparkles, Loader2, Save, X, Radio } from 'lucide-react';
+import { Sparkles, Loader2, Save, X, Radio, Plus, Edit2 } from 'lucide-react';
 
 interface PrizeFormProps {
   initialData?: Prize;
@@ -244,6 +243,3 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, onSave, onCan
     </div>
   );
 };
-
-// Imports needed for icons used above (added manually to ensure no breaking changes)
-import { Plus, Edit2 } from 'lucide-react';

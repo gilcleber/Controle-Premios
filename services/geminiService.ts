@@ -1,9 +1,27 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to safely get API Key without crashing in browser
+const getApiKey = () => {
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env.API_KEY;
+    }
+  } catch (e) {
+    console.warn("Environment process not defined");
+  }
+  return undefined;
+};
 
 export const generatePrizeScript = async (prizeName: string, description: string): Promise<string> => {
+  const apiKey = getApiKey();
+  
+  if (!apiKey) {
+    console.warn("Gemini API Key missing");
+    return "Funcionalidade indisponível: Chave de API (Gemini) não configurada no ambiente.";
+  }
+
   try {
+    const ai = new GoogleGenAI({ apiKey });
     const prompt = `
       Atue como um locutor de rádio energético e criativo.
       Crie um roteiro curto (chamada de 15-20 segundos) para anunciar o sorteio do seguinte prêmio na rádio:
@@ -26,26 +44,5 @@ export const generatePrizeScript = async (prizeName: string, description: string
 };
 
 export const suggestPrizeIdeas = async (): Promise<string[]> => {
-  try {
-    const prompt = `
-      Liste 5 ideias criativas e econômicas de prêmios para sorteios em rádio que geram alto engajamento.
-      Retorne a resposta em formato JSON Array de strings, exemplo: ["Jantar Romântico", "Kit Churrasco"].
-      Não use markdown.
-    `;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
-    });
-
-    const text = response.text;
-    if (!text) return [];
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Erro ao sugerir ideias:", error);
-    return [];
-  }
+  return []; // Removed functionality as requested, kept for type safety
 };
