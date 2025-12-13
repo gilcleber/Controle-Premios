@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from './services/supabase';
-import { Prize, PrizeOutput, TabView, UserRole } from './types';
+import { Prize, PrizeOutput, TabView, UserRole, Program, OutputType } from './types';
 import { PrizeList } from './components/PrizeList';
 import { PrizeForm } from './components/PrizeForm';
 import { WinnerList } from './components/WinnerList';
-import { LayoutDashboard, Gift, Users, Radio, ClipboardList, LogOut, X, History, AlertTriangle, Shield, Share2, Lock, RefreshCw, Search, Trophy, PackagePlus, Zap, Copy, ExternalLink, FileText } from 'lucide-react';
+import { LayoutDashboard, Gift, Users, Radio, ClipboardList, LogOut, X, History, AlertTriangle, Shield, Share2, Lock, RefreshCw, Search, Trophy, PackagePlus, Zap, Copy, ExternalLink, FileText, Database, Settings, Mic2, Gift as GiftIcon, Plus } from 'lucide-react';
 import { ToastContainer, ToastMessage, ToastType } from './components/Toast';
 
 const App: React.FC = () => {
@@ -28,6 +28,13 @@ const App: React.FC = () => {
   const [selectedPrizeForOutput, setSelectedPrizeForOutput] = useState<Prize | null>(null);
   const [outputQuantity, setOutputQuantity] = useState(1);
   const [outputNote, setOutputNote] = useState('');
+  const [outputProgramId, setOutputProgramId] = useState('');
+  const [outputType, setOutputType] = useState<OutputType>('DRAW');
+  const [outputDate, setOutputDate] = useState(''); // New state for date
+  const [additionalPrizes, setAdditionalPrizes] = useState<{ prizeId: string, quantity: number }[]>([]); // New state for combos
+
+  // Programs State
+  const [programs, setPrograms] = useState<Program[]>([]);
 
   // Winner Fields State
   const [winnerName, setWinnerName] = useState('');
@@ -39,10 +46,25 @@ const App: React.FC = () => {
 
   // Edit Output State (Placeholder for future expansion)
   const [editingOutput, setEditingOutput] = useState<PrizeOutput | null>(null);
+  const [viewingOutput, setViewingOutput] = useState<PrizeOutput | null>(null); // New state for viewing details
+
+  // Delete Confirmation Modal State (Outputs)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [outputToDelete, setOutputToDelete] = useState<PrizeOutput | null>(null);
+  const [returnToStock, setReturnToStock] = useState(true);
+
+  // Delete Confirmation Modal State (Prizes)
+  const [prizeDeleteModalOpen, setPrizeDeleteModalOpen] = useState(false);
+  const [prizeToDelete, setPrizeToDelete] = useState<Prize | null>(null);
 
   // Script Modal State
   const [scriptModalOpen, setScriptModalOpen] = useState(false);
   const [generatedScript, setGeneratedScript] = useState('');
+
+  // Script Configuration Modal State
+  const [scriptConfigModalOpen, setScriptConfigModalOpen] = useState(false);
+  const [selectedPrizeForScript, setSelectedPrizeForScript] = useState<Prize | null>(null);
+  const [scriptProgramId, setScriptProgramId] = useState('');
 
   // Share Modal State
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -94,17 +116,38 @@ const App: React.FC = () => {
       (output.date && output.date.includes(q)) ||
       (output.winnerDoc && output.winnerDoc.includes(q))
     );
+  }).filter(output => {
+    // Filtro para Recepção: Não mostrar itens expirados HÁ MAIS DE 1 DIA
+    if (userRole === 'RECEPTION') {
+      const deadline = new Date(output.pickupDeadline);
+      const toleranceDate = new Date(deadline);
+      toleranceDate.setDate(toleranceDate.getDate() + 1); // +1 dia de tolerância
+
+      const isExpiredAndHidden = output.status === 'PENDING' && toleranceDate < new Date();
+      return !isExpiredAndHidden;
+    }
+    return true;
   });
 
-  const filteredPrizes = prizes.filter(prize => {
-    const q = searchQuery.toLowerCase();
-    if (!q) return true;
-    return (
-      (prize.name && prize.name.toLowerCase().includes(q)) ||
-      (prize.description && prize.description.toLowerCase().includes(q))
-    );
-  });
+  const filteredPrizes = useMemo(() => {
+    let filtered = prizes;
 
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(p => p.name.toLowerCase().includes(query) || p.description.toLowerCase().includes(query));
+    }
+
+    // Filter by Role/Tab
+    if (userRole === 'OPERATOR') {
+      filtered = filtered.filter(p => p.isOnAir);
+    } else if (activeTab === 'INVENTORY' && userRole === 'ADMIN') {
+      // Admin Inventory: Hide "On Air" items to keep list clean
+      filtered = filtered.filter(p => !p.isOnAir);
+    }
+
+    return filtered;
+  }, [prizes, searchQuery, userRole, activeTab]);
   // --- Data Fetching ---
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -120,35 +163,41 @@ const App: React.FC = () => {
     setLoading(false);
   }, []);
 
+  const fetchPrograms = async () => {
+    const { data, error } = await supabase.from('programs').select('*').order('name');
+    if (error) {
+      console.error('Erro ao buscar programas:', error);
+      // Fallback se a tabela não existir ainda
+      setPrograms([
+        { id: '1', name: 'Manhã Bandeirantes', active: true },
+        { id: '2', name: 'Esporte em Debate', active: true },
+        { id: '3', name: 'Jornada Esportiva', active: true },
+        { id: '4', name: 'Apito Final', active: true },
+        { id: '5', name: 'Nossa Área', active: true },
+      ]);
+    } else {
+      setPrograms(data || []);
+    }
+  };
+
   // --- Initialization & Realtime ---
   useEffect(() => {
     fetchData();
+    fetchPrograms();
 
     const channels = supabase.channel('custom-all-channel')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'prizes' },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setPrizes(prev => [...prev, payload.new as Prize]);
-          } else if (payload.eventType === 'UPDATE') {
-            setPrizes(prev => prev.map(p => p.id === payload.new.id ? payload.new as Prize : p));
-          } else if (payload.eventType === 'DELETE') {
-            setPrizes(prev => prev.filter(p => p.id !== payload.old.id));
-          }
+        () => {
+          fetchData();
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'outputs' },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setOutputs(prev => [payload.new as PrizeOutput, ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            setOutputs(prev => prev.map(o => o.id === payload.new.id ? payload.new as PrizeOutput : o));
-          } else if (payload.eventType === 'DELETE') {
-            setOutputs(prev => prev.filter(o => o.id !== payload.old.id));
-          }
+        () => {
+          fetchData();
         }
       )
       .subscribe();
@@ -185,7 +234,7 @@ const App: React.FC = () => {
 
   const handleAdminLoginAttempt = (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminPassword === '0000') {
+    if (adminPassword === (import.meta.env.VITE_ADMIN_PASSWORD || '1518')) {
       setUserRole('ADMIN');
       setActiveTab('DASHBOARD');
       setShowAdminLogin(false);
@@ -200,8 +249,66 @@ const App: React.FC = () => {
     window.history.pushState({}, '', window.location.pathname);
   };
 
-  const handleSavePrize = async (prize: Prize) => {
+  const handleSavePrize = async (prize: Prize, sourcePrizeId?: string, refundPrizeId?: string, additionalPrizes?: { prizeId: string, quantity: number }[]) => {
     if (userRole !== 'ADMIN') return;
+
+    // Logic to handle additional prizes (Combos)
+    if (additionalPrizes && additionalPrizes.length > 0) {
+      let extraNames = [];
+      for (const extra of additionalPrizes) {
+        const extraPrize = prizes.find(p => p.id === extra.prizeId);
+        if (extraPrize) {
+          // Debit stock for extra prize
+          const newQuantity = extraPrize.availableQuantity - extra.quantity;
+          await supabase.from('prizes').update({ availableQuantity: newQuantity }).eq('id', extra.prizeId);
+          extraNames.push(`${extra.quantity}x ${extraPrize.name}`);
+        }
+      }
+      // Append extras to the main prize name for visibility
+      if (extraNames.length > 0) {
+        prize.name = `${prize.name} + ${extraNames.join(' + ')}`;
+      }
+    }
+
+    // Se tiver refundPrizeId, significa que é para devolver ao estoque (Correção/Troca)
+    if (refundPrizeId) {
+      const refundPrize = prizes.find(p => p.id === refundPrizeId);
+      if (refundPrize) {
+        const newRefundQuantity = refundPrize.availableQuantity + prize.totalQuantity;
+        const { error: refundError } = await supabase.from('prizes')
+          .update({ availableQuantity: newRefundQuantity })
+          .eq('id', refundPrizeId);
+
+        if (refundError) {
+          console.error("Erro ao devolver estoque (Troca):", refundError);
+          addToast("Erro ao devolver item antigo ao estoque.", 'error');
+          return;
+        }
+      }
+    }
+
+    // Se tiver sourcePrizeId, significa que é para debitar do estoque
+    if (sourcePrizeId) {
+      const sourcePrize = prizes.find(p => p.id === sourcePrizeId);
+      if (sourcePrize) {
+        if (sourcePrize.availableQuantity < prize.totalQuantity) {
+          addToast("Quantidade insuficiente no estoque!", 'error');
+          return;
+        }
+
+        // 1. Atualiza o prêmio de origem (subtrai do estoque)
+        const newSourceQuantity = sourcePrize.availableQuantity - prize.totalQuantity;
+        const { error: updateError } = await supabase.from('prizes')
+          .update({ availableQuantity: newSourceQuantity })
+          .eq('id', sourcePrizeId);
+
+        if (updateError) {
+          console.error("Erro ao atualizar estoque:", updateError);
+          addToast("Erro ao debitar do estoque.", 'error');
+          return;
+        }
+      }
+    }
 
     const { error } = await supabase.from('prizes').upsert(prize);
 
@@ -213,13 +320,32 @@ const App: React.FC = () => {
       setIsFormOpen(false);
       setEditingPrize(undefined);
       setFormIsQuickDraw(false);
+      fetchData();
     }
   };
 
-  const handleDeletePrize = async (id: string) => {
+  const handleDeletePrize = (id: string) => {
     if (userRole !== 'ADMIN') return;
-    if (confirm('ATENÇÃO: Tem certeza que deseja excluir este prêmio do estoque?')) {
-      await supabase.from('prizes').delete().eq('id', id);
+    const prize = prizes.find(p => p.id === id);
+    if (prize) {
+      setPrizeToDelete(prize);
+      setPrizeDeleteModalOpen(true);
+    }
+  };
+
+  const confirmDeletePrize = async () => {
+    if (!prizeToDelete) return;
+
+    const { error } = await supabase.from('prizes').delete().eq('id', prizeToDelete.id);
+
+    if (error) {
+      console.error("Erro ao excluir prêmio:", error);
+      addToast("Erro ao excluir prêmio.", 'error');
+    } else {
+      addToast("Prêmio excluído do estoque!", 'success');
+      setPrizeDeleteModalOpen(false);
+      setPrizeToDelete(null);
+      fetchData();
     }
   };
 
@@ -233,18 +359,27 @@ const App: React.FC = () => {
   const handleToggleOnAir = async (prize: Prize) => {
     if (userRole !== 'ADMIN') return;
     await supabase.from('prizes').update({ isOnAir: !prize.isOnAir }).eq('id', prize.id);
+    fetchData();
   };
 
   const openOutputModal = (prize: Prize) => {
-    setSelectedPrizeForOutput(prize);
-    setOutputQuantity(1);
-    setOutputNote('');
-    setWinnerName('');
-    setWinnerPhone('');
-    setWinnerEmail('');
-    setWinnerDoc('');
-    setWinnerAddress('');
-    setOutputModalOpen(true);
+    // Reset states first to avoid ghost data
+    setSelectedPrizeForOutput(null);
+    setTimeout(() => {
+      setSelectedPrizeForOutput(prize);
+      setOutputQuantity(prize.availableQuantity); // Default to max available
+      setOutputNote('');
+      setWinnerName('');
+      setWinnerPhone('');
+      setWinnerEmail('');
+      setWinnerDoc('');
+      setWinnerAddress('');
+      setOutputType('DRAW');
+      setOutputProgramId(programs.length > 0 ? programs[0].id : '');
+      setOutputDate(new Date().toISOString().split('T')[0]); // Default to today
+      setAdditionalPrizes([]); // Reset additional prizes
+      setOutputModalOpen(true);
+    }, 0);
   };
 
   const handleRegisterOutput = async (e: React.FormEvent) => {
@@ -262,16 +397,30 @@ const App: React.FC = () => {
       return;
     }
 
-    const today = new Date();
-    const deadlineDate = addBusinessDays(today, selectedPrizeForOutput.pickupDeadlineDays);
+    const today = new Date(outputDate); // Use selected date
+    // Fix timezone issue by setting time to noon or just treating as local date string
+    // Ideally, we just want the date part. new Date('YYYY-MM-DD') creates UTC.
+    // Let's ensure we treat it as local.
+    const [year, month, day] = outputDate.split('-').map(Number);
+    const dateObj = new Date(year, month - 1, day);
 
+    const deadlineDate = addBusinessDays(dateObj, selectedPrizeForOutput.pickupDeadlineDays);
+
+    const selectedProgram = programs.find(p => p.id === outputProgramId);
+    const programName = selectedProgram ? selectedProgram.name : 'Avulso';
+    const finalNote = outputType === 'GIFT' ? `Brinde/Diretoria - ${programName}` : programName;
+
+    // 1. Register Main Prize
     const newOutput: PrizeOutput = {
       id: crypto.randomUUID(),
       prizeId: selectedPrizeForOutput.id,
       prizeName: selectedPrizeForOutput.name,
       quantity: outputQuantity,
-      note: outputNote || 'Saída Avulsa',
-      date: today.toISOString(),
+      note: finalNote,
+      programId: outputProgramId || null,
+      programName: programName,
+      type: outputType,
+      date: dateObj.toISOString(), // Use selected date
       pickupDeadline: deadlineDate.toISOString(),
       status: 'PENDING',
       winnerName,
@@ -290,9 +439,31 @@ const App: React.FC = () => {
     const newQuantity = selectedPrizeForOutput.availableQuantity - outputQuantity;
     await supabase.from('prizes').update({ availableQuantity: newQuantity }).eq('id', selectedPrizeForOutput.id);
 
+    // 2. Register Additional Prizes (Combos)
+    for (const extra of additionalPrizes) {
+      const extraPrize = prizes.find(p => p.id === extra.prizeId);
+      if (extraPrize) {
+        const extraOutput: PrizeOutput = {
+          ...newOutput,
+          id: crypto.randomUUID(),
+          prizeId: extraPrize.id,
+          prizeName: extraPrize.name,
+          quantity: extra.quantity,
+          note: `${finalNote} (Combo)`, // Mark as combo
+        };
+
+        await supabase.from('outputs').insert(extraOutput);
+
+        const extraNewQty = extraPrize.availableQuantity - extra.quantity;
+        await supabase.from('prizes').update({ availableQuantity: extraNewQty }).eq('id', extraPrize.id);
+      }
+    }
+
     setOutputModalOpen(false);
     setSelectedPrizeForOutput(null);
-    addToast("Saída registrada com sucesso!", 'success');
+    setAdditionalPrizes([]);
+    addToast("Saída(s) registrada(s) com sucesso!", 'success');
+    fetchData();
     if (userRole === 'ADMIN') setActiveTab('OUTPUTS');
   };
 
@@ -304,21 +475,66 @@ const App: React.FC = () => {
         status: 'DELIVERED',
         deliveredDate: new Date().toISOString()
       }).eq('id', outputId);
+      fetchData();
     }
   };
 
-  const handleDeleteOutput = async (outputId: string) => {
+  const handleDeleteOutput = (outputId: string) => {
     if (userRole !== 'ADMIN') return;
-
     const output = outputs.find(o => o.id === outputId);
-    if (!output) return;
+    if (output) {
+      setOutputToDelete(output);
+      setReturnToStock(true); // Default to true
+      setDeleteModalOpen(true);
+    }
+  };
 
-    if (confirm(`Excluir saída de "${output.prizeName}" e devolver ${output.quantity} itens ao estoque?`)) {
-      const prize = prizes.find(p => p.id === output.prizeId);
-      if (prize) {
-        await supabase.from('prizes').update({ availableQuantity: prize.availableQuantity + output.quantity }).eq('id', prize.id);
+  const confirmDeleteOutput = async () => {
+    if (!outputToDelete) return;
+
+    // 1. Devolver ao estoque (Se marcado)
+    if (returnToStock) {
+      // Fetch fresh prize data to ensure accuracy
+      const { data: currentPrize, error: fetchError } = await supabase
+        .from('prizes')
+        .select('*')
+        .eq('id', outputToDelete.prizeId)
+        .single();
+
+      if (fetchError) {
+        console.error("Erro ao buscar prêmio para devolução:", fetchError);
+        // If prize doesn't exist anymore, we can't return stock, but we can still delete the output
+        if (fetchError.code !== 'PGRST116') { // PGRST116 is "The result contains 0 rows"
+          addToast("Erro ao verificar estoque. Tente novamente.", 'error');
+          return;
+        }
       }
-      await supabase.from('outputs').delete().eq('id', outputId);
+
+      if (currentPrize) {
+        const newQuantity = currentPrize.availableQuantity + outputToDelete.quantity;
+        const { error: updateError } = await supabase.from('prizes')
+          .update({ availableQuantity: newQuantity })
+          .eq('id', currentPrize.id);
+
+        if (updateError) {
+          console.error("Erro ao devolver estoque:", updateError);
+          addToast("Erro ao devolver item ao estoque.", 'error');
+          return;
+        }
+      }
+    }
+
+    // 2. Excluir Saída
+    const { error } = await supabase.from('outputs').delete().eq('id', outputToDelete.id);
+
+    if (error) {
+      console.error("Erro ao excluir:", error);
+      addToast("Erro ao excluir saída.", 'error');
+    } else {
+      addToast(returnToStock ? "Saída excluída e estoque atualizado!" : "Saída excluída (estoque mantido).", 'success');
+      setDeleteModalOpen(false);
+      setOutputToDelete(null);
+      fetchData();
     }
   };
 
@@ -327,16 +543,182 @@ const App: React.FC = () => {
     setEditingOutput({ ...output });
   };
 
+  const handleSaveEditedOutput = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingOutput) return;
+
+    const selectedProgram = programs.find(p => p.id === editingOutput.programId);
+    const programName = selectedProgram ? selectedProgram.name : (editingOutput.programName || 'Avulso');
+
+    // Update note if program changed
+    let finalNote = editingOutput.note;
+    if (editingOutput.type === 'GIFT') {
+      finalNote = `Brinde/Diretoria - ${programName}`;
+    } else {
+      finalNote = programName;
+    }
+
+    const { error } = await supabase.from('outputs').update({
+      winnerName: editingOutput.winnerName,
+      winnerPhone: editingOutput.winnerPhone,
+      winnerEmail: editingOutput.winnerEmail,
+      winnerDoc: editingOutput.winnerDoc,
+      winnerAddress: editingOutput.winnerAddress,
+      programId: editingOutput.programId,
+      programName: programName,
+      note: finalNote,
+      type: editingOutput.type,
+      date: editingOutput.date, // Update date
+      pickupDeadline: editingOutput.pickupDeadline // Update deadline
+    }).eq('id', editingOutput.id);
+
+    if (error) {
+      console.error("Erro ao atualizar:", error);
+      addToast("Erro ao atualizar registro.", 'error');
+    } else {
+      addToast("Registro atualizado com sucesso!", 'success');
+      setEditingOutput(null);
+      fetchData();
+    }
+  };
+
   const handleGenerateScript = (prize: Prize) => {
+    setSelectedPrizeForScript(prize);
+    setScriptProgramId(programs.length > 0 ? programs[0].id : '');
+    setScriptConfigModalOpen(true);
+  };
+
+  const confirmGenerateScript = () => {
+    if (!selectedPrizeForScript) return;
+
+    const selectedProgram = programs.find(p => p.id === scriptProgramId);
+    const programName = selectedProgram ? selectedProgram.name : "Esporte em Debate";
+
     const today = new Date();
     const todayStr = today.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-    const pickupDate = addBusinessDays(today, prize.pickupDeadlineDays);
+    const pickupDate = addBusinessDays(today, selectedPrizeForScript.pickupDeadlineDays);
     const pickupDateStr = pickupDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-    const script = `${todayStr}\nE HOJE AQUI NO ESPORTE EM DEBATE VOCÊ QUE PARTICIPA PELO YOUTUBE PODE GANHAR PREMIOS.\n*${prize.name.toUpperCase()}*\nE PARA PARTICIPAR ENTRE AGORA NA TRANSMISSÃO DO YOUTUBE DA RÁDIOBANDEIRANTES CAMPINAS PREENCHA O FORMULÁRIO QUE ESTA FIXADO NOS COMENTARIOS OU ACESSE NOSSO SITE\nWWW.RADIOBANDEIRANTESCAMPINAS.COM.BR / VA ATE PROMOÇÕES E PREENCHA O FORMULARIO E BOA SORTE. VAMOS DIVULGAR O GANHADOR NO FINAL DO PROGRAMA\nE SE VOCÊ NÃO TIVER COMO BUSCAR O PREMIO, ENTÃO NEM PARTICIPE, DEIXE PARA OUTRA PESSOA, POIS, A RETIRADA É OBRIGATÓRIA DA PESSOA SORTEADA.\nRETIRADA ATÉ DIA ${pickupDateStr}`;
+    const script = `${todayStr}\nE HOJE AQUI NO ${programName.toUpperCase()} VOCÊ QUE PARTICIPA PELO YOUTUBE PODE GANHAR PREMIOS.\n*${selectedPrizeForScript.name.toUpperCase()}*\nE PARA PARTICIPAR ENTRE AGORA NA TRANSMISSÃO DO YOUTUBE DA RÁDIOBANDEIRANTESCAMPINAS PREENCHA O FORMULÁRIO QUE ESTA FIXADO NOS COMENTARIOS OU ACESSE NOSSO SITE\nWWW.RADIOBANDEIRANTESCAMPINAS.COM.BR / VA ATE PROMOÇÕES E PREENCHA O FORMULARIO E BOA SORTE. VAMOS DIVULGAR O GANHADOR NO FINAL DO PROGRAMA\nE SE VOCÊ NÃO TIVER COMO BUSCAR O PREMIO, ENTÃO NEM PARTICIPE, DEIXE PARA OUTRA PESSOA, POIS, A RETIRADA É OBRIGATÓRIA DA PESSOA SORTEADA.\nRETIRADA ATÉ DIA ${pickupDateStr}`;
 
     setGeneratedScript(script);
+    setScriptConfigModalOpen(false);
     setScriptModalOpen(true);
+  };
+
+  // Program Management Handlers
+  const handleAddProgram = async () => {
+    const name = prompt("Nome do novo programa:");
+    if (!name) return;
+
+    const { error } = await supabase.from('programs').insert({ name, active: true });
+    if (error) {
+      addToast("Erro ao criar programa. Verifique se a tabela 'programs' existe.", 'error');
+      // Fallback local
+      const newProgram: Program = { id: Date.now().toString(), name, active: true };
+      setPrograms([...programs, newProgram]);
+    } else {
+      addToast("Programa criado!", 'success');
+      fetchPrograms();
+    }
+  };
+
+  const handleDeleteProgram = async (id: string) => {
+    if (!confirm("Excluir este programa?")) return;
+    const { error } = await supabase.from('programs').delete().eq('id', id);
+    if (error) {
+      addToast("Erro ao excluir. (Modo Local)", 'info');
+      setPrograms(programs.filter(p => p.id !== id));
+    } else {
+      addToast("Programa excluído!", 'success');
+      fetchPrograms();
+    }
+  };
+
+  const handleExtendDeadline = async (outputId: string) => {
+    if (userRole !== 'ADMIN') return;
+
+    const daysStr = prompt("Quantos dias úteis deseja adicionar?", "3");
+    if (!daysStr) return;
+    const days = parseInt(daysStr);
+    if (isNaN(days) || days <= 0) {
+      addToast("Quantidade inválida.", 'error');
+      return;
+    }
+
+    // Estende a partir de HOJE
+    const newDeadline = addBusinessDays(new Date(), days).toISOString();
+
+    const { error } = await supabase.from('outputs').update({ pickupDeadline: newDeadline }).eq('id', outputId);
+
+    if (error) {
+      addToast("Erro ao estender prazo.", 'error');
+    } else {
+      addToast(`Prazo estendido por mais ${days} dias úteis!`, 'success');
+      fetchData();
+    }
+  };
+
+  const handleGenerateTestData = async () => {
+    if (userRole !== 'ADMIN') return;
+    if (!confirm('Isso irá gerar dados fictícios para teste. Deseja continuar?')) return;
+
+    setLoading(true);
+
+    // 1. Criar Prêmios
+    const testPrizes: Prize[] = [
+      { id: crypto.randomUUID(), name: 'Par de Ingressos Cinema', description: 'Válido para qualquer filme 2D', totalQuantity: 10, availableQuantity: 5, entryDate: new Date().toISOString(), validityDate: '2025-12-31', maxDrawDate: '2025-12-31', pickupDeadlineDays: 3, isOnAir: true },
+      { id: crypto.randomUUID(), name: 'Voucher Jantar', description: 'Restaurante Bom Sabor - R$ 100,00', totalQuantity: 5, availableQuantity: 2, entryDate: new Date().toISOString(), validityDate: '2025-11-30', maxDrawDate: '2025-11-30', pickupDeadlineDays: 5, isOnAir: false },
+    ];
+
+    for (const p of testPrizes) {
+      await supabase.from('prizes').upsert(p);
+    }
+
+    // 2. Criar Saídas (Ganhadores)
+    const pastDate = new Date();
+    pastDate.setDate(pastDate.getDate() - 10); // 10 dias atrás
+
+    const testOutputs: PrizeOutput[] = [
+      {
+        id: crypto.randomUUID(),
+        prizeId: testPrizes[0].id,
+        prizeName: testPrizes[0].name,
+        quantity: 1,
+        note: 'Sorteio Manhã',
+        date: new Date().toISOString(),
+        pickupDeadline: addBusinessDays(new Date(), 3).toISOString(), // No prazo
+        status: 'PENDING',
+        winnerName: 'João da Silva (No Prazo)',
+        winnerPhone: '(19) 99999-9999',
+        winnerDoc: '123.456.789-00',
+        type: 'DRAW',
+        programName: 'Manhã Bandeirantes'
+      },
+      {
+        id: crypto.randomUUID(),
+        prizeId: testPrizes[0].id,
+        prizeName: testPrizes[0].name,
+        quantity: 1,
+        note: 'Sorteio Tarde',
+        date: pastDate.toISOString(),
+        pickupDeadline: pastDate.toISOString(), // Expirado
+        status: 'PENDING',
+        winnerName: 'Maria Souza (Expirado)',
+        winnerPhone: '(19) 88888-8888',
+        winnerDoc: '987.654.321-00',
+        type: 'DRAW',
+        programName: 'Esporte em Debate'
+      }
+    ];
+
+    for (const o of testOutputs) {
+      await supabase.from('outputs').insert(o);
+    }
+
+    setLoading(false);
+    addToast("Dados de teste gerados com sucesso!", 'success');
+    fetchData();
   };
 
   const copyToClipboard = () => {
@@ -412,8 +794,10 @@ const App: React.FC = () => {
               <button onClick={() => setActiveTab('DASHBOARD')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'DASHBOARD' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><LayoutDashboard size={20} /> Visão Geral</button>
               <button onClick={() => setActiveTab('INVENTORY')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'INVENTORY' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Gift size={20} /> Estoque Prêmios</button>
               <button onClick={() => setActiveTab('OUTPUTS')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'OUTPUTS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><ClipboardList size={20} /> Saídas / Histórico</button>
-              <div className="pt-4 mt-4 border-t border-slate-800">
+              <button onClick={() => setActiveTab('PROGRAMS')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'PROGRAMS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Settings size={20} /> Programas</button>
+              <div className="pt-4 mt-4 border-t border-slate-800 space-y-2">
                 <button onClick={() => setShareModalOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-teal-400 hover:bg-teal-900/20 transition-colors"><Share2 size={20} /> Compartilhar</button>
+                <button onClick={handleGenerateTestData} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-purple-400 hover:bg-purple-900/20 transition-colors text-xs"><Database size={16} /> Gerar Dados Teste</button>
               </div>
             </>
           )}
@@ -425,7 +809,9 @@ const App: React.FC = () => {
           )}
           <div className="mt-auto">
             <div className="px-4 py-2 mb-2 text-xs text-slate-500 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>Sistema Online</div>
-            <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-red-900/20 hover:text-red-400 transition-colors"><LogOut size={20} /> Sair</button>
+            {userRole === 'ADMIN' && (
+              <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-red-900/20 hover:text-red-400 transition-colors"><LogOut size={20} /> Sair</button>
+            )}
           </div>
         </nav>
       </aside>
@@ -489,49 +875,454 @@ const App: React.FC = () => {
 
             {(activeTab === 'OUTPUTS' || userRole === 'RECEPTION') && (
               <div>
+                {/* Admin: On Air Management Section */}
+                {userRole === 'ADMIN' && (
+                  <div className="mb-8 bg-indigo-50 border border-indigo-100 rounded-xl p-6">
+                    <h3 className="text-lg font-bold text-indigo-900 mb-4 flex items-center gap-2">
+                      <Radio size={20} className="text-indigo-600" />
+                      Gerenciamento - Prêmios no Ar
+                    </h3>
+                    <p className="text-sm text-indigo-700 mb-4">
+                      Estes são os prêmios visíveis para o locutor. Você pode editar, trocar estoque ou remover daqui.
+                    </p>
+                    <PrizeList
+                      prizes={prizes.filter(p => p.isOnAir)}
+                      role={userRole}
+                      onDelete={handleDeletePrize}
+                      onEdit={handleEditPrize}
+                      onDraw={openOutputModal}
+                      onGenerateScript={handleGenerateScript}
+                      onToggleOnAir={handleToggleOnAir}
+                    />
+                    {prizes.filter(p => p.isOnAir).length === 0 && (
+                      <p className="text-sm text-indigo-400 italic text-center py-4">Nenhum prêmio no ar no momento.</p>
+                    )}
+                  </div>
+                )}
+
                 <div className="mb-4 flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm max-w-md">
                   <Search size={20} className="text-gray-400 ml-2" />
                   <input type="text" placeholder="Buscar por ganhador, prêmio ou data..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-800 placeholder-gray-400" />
                   {searchQuery && <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600 p-1"><X size={16} /></button>}
                 </div>
-                <WinnerList winners={filteredOutputs} role={userRole} onConfirmPickup={handleConfirmPickup} onEdit={handleEditOutput} onDelete={handleDeleteOutput} />
+
+                <WinnerList
+                  winners={filteredOutputs}
+                  role={userRole}
+                  onConfirmPickup={handleConfirmPickup}
+                  onEdit={handleEditOutput}
+                  onDelete={handleDeleteOutput}
+                  onExtendDeadline={handleExtendDeadline}
+                  onView={(output) => setViewingOutput(output)}
+                />
+              </div>
+            )}
+
+            {activeTab === 'PROGRAMS' && userRole === 'ADMIN' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-bold text-gray-800">Gerenciar Programas</h3>
+                  <button onClick={handleAddProgram} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"><Plus size={18} /> Novo Programa</button>
+                </div>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <table className="w-full text-left">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Nome do Programa</th>
+                        <th className="p-4 text-xs font-bold text-gray-500 uppercase text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {programs.map(prog => (
+                        <tr key={prog.id} className="hover:bg-gray-50">
+                          <td className="p-4 font-medium text-gray-800 flex items-center gap-2"><Mic2 size={16} className="text-blue-500" /> {prog.name}</td>
+                          <td className="p-4 text-right">
+                            <button onClick={() => handleDeleteProgram(prog.id)} className="text-red-500 hover:bg-red-50 p-2 rounded"><X size={16} /></button>
+                          </td>
+                        </tr>
+                      ))}
+                      {programs.length === 0 && <tr><td colSpan={2} className="p-8 text-center text-gray-400">Nenhum programa cadastrado.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-sm text-blue-800">
+                  <p className="font-bold mb-1">Dica:</p>
+                  <p>Estes programas aparecerão na lista quando você for registrar um ganhador ou gerar um roteiro.</p>
+                </div>
               </div>
             )}
           </>
         )}
       </main>
 
-      {isFormOpen && userRole === 'ADMIN' && <PrizeForm initialData={editingPrize} onSave={handleSavePrize} onCancel={() => { setIsFormOpen(false); setEditingPrize(undefined); }} forceOnAir={formIsQuickDraw} />}
+      {isFormOpen && userRole === 'ADMIN' && <PrizeForm initialData={editingPrize} prizes={prizes} onSave={handleSavePrize} onCancel={() => { setIsFormOpen(false); setEditingPrize(undefined); }} forceOnAir={formIsQuickDraw} />}
 
-      {outputModalOpen && selectedPrizeForOutput && (
+      {
+        outputModalOpen && selectedPrizeForOutput && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8">
+              <div className="p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl"><h3 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Trophy size={20} className="text-indigo-600" /> Registrar Ganhador</h3><p className="text-sm text-gray-600 mt-1">Prêmio: <span className="font-bold text-blue-600">{selectedPrizeForOutput.name}</span></p></div>
+              <form onSubmit={handleRegisterOutput} className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {userRole === 'ADMIN' && (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tipo de Saída</label>
+                      <div className="flex bg-gray-100 rounded-lg p-1">
+                        <button type="button" onClick={() => setOutputType('DRAW')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${outputType === 'DRAW' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Trophy size={14} /> Sorteio</button>
+                        <button type="button" onClick={() => setOutputType('GIFT')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${outputType === 'GIFT' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><GiftIcon size={14} /> Brinde</button>
+                      </div>
+                    </div>
+                  )}
+                  <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Qtd</label><input type="number" min="1" max={selectedPrizeForOutput.availableQuantity} required value={outputQuantity} onChange={e => setOutputQuantity(parseInt(e.target.value) || 1)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" /></div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data do Sorteio</label>
+                  <input
+                    type="date"
+                    required
+                    value={outputDate}
+                    onChange={e => setOutputDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Combo / Additional Prizes Section */}
+                <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                  <label className="block text-xs font-bold text-indigo-800 uppercase mb-2 flex items-center gap-2">
+                    <PackagePlus size={14} /> Adicionar + Prêmios (Combo)
+                  </label>
+                  <div className="space-y-2">
+                    {additionalPrizes.map((extra, index) => {
+                      const p = prizes.find(p => p.id === extra.prizeId);
+                      return (
+                        <div key={index} className="flex gap-2 items-center text-sm bg-white p-2 rounded border border-indigo-100">
+                          <span className="font-bold text-gray-700 flex-1">{p?.name}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-gray-500">Qtd:</span>
+                            <input
+                              type="number"
+                              min="1"
+                              max={p?.availableQuantity || 1}
+                              value={extra.quantity}
+                              onChange={(e) => {
+                                const newQty = parseInt(e.target.value) || 1;
+                                setAdditionalPrizes(prev => prev.map((item, i) => i === index ? { ...item, quantity: newQty } : item));
+                              }}
+                              className="w-16 px-2 py-1 border border-gray-300 rounded text-center focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            />
+                          </div>
+                          <button type="button" onClick={() => setAdditionalPrizes(prev => prev.filter((_, i) => i !== index))} className="text-red-500 hover:text-red-700"><X size={14} /></button>
+                        </div>
+                      );
+                    })}
+                    <div className="flex gap-2">
+                      <select
+                        className="flex-1 text-xs border border-gray-300 rounded p-1.5"
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            const prizeId = e.target.value;
+                            const prize = prizes.find(p => p.id === prizeId);
+                            if (prize) {
+                              const exists = additionalPrizes.find(a => a.prizeId === prizeId);
+                              if (!exists) {
+                                setAdditionalPrizes(prev => [...prev, { prizeId, quantity: 1 }]);
+                              }
+                            }
+                            e.target.value = ""; // Reset select
+                          }
+                        }}
+                      >
+                        <option value="">+ Selecionar prêmio extra...</option>
+                        {prizes.filter(p => p.id !== selectedPrizeForOutput.id && p.availableQuantity > 0 && !p.isOnAir).map(p => (
+                          <option key={p.id} value={p.id}>{p.name} (Disp: {p.availableQuantity})</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Programa / Evento</label>
+                  <select value={outputProgramId} onChange={e => setOutputProgramId(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none bg-white">
+                    <option value="">Selecione um programa...</option>
+                    {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div className="border-t border-gray-100 pt-4 mt-2">
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome do Ganhador *</label>
+                  <input type="text" required value={winnerName} onChange={e => setWinnerName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none font-medium" placeholder="Nome completo do ouvinte" autoComplete="off" />
+                  {winnerHistory.length > 0 && (
+                    <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3"><div className="flex items-center gap-2 text-amber-800 font-bold text-xs uppercase mb-2"><History size={14} /> Histórico Encontrado ({winnerHistory.length})</div><div className="max-h-24 overflow-y-auto space-y-1">{winnerHistory.map(h => (<div key={h.id} className="text-xs text-amber-900 flex justify-between border-b border-amber-100 pb-1 last:border-0"><span>{new Date(h.date).toLocaleDateString()} - {h.prizeName}</span><span className="opacity-70">{h.note}</span></div>))}</div></div>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone</label><input type="tel" value={winnerPhone} onChange={e => setWinnerPhone(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" placeholder="(XX) 9XXXX-XXXX" /></div>
+                  <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">CPF / RG</label><input type="text" value={winnerDoc} onChange={e => setWinnerDoc(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" /></div>
+                </div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label><input type="email" value={winnerEmail} onChange={e => setWinnerEmail(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" /></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Endereço</label><input type="text" value={winnerAddress} onChange={e => setWinnerAddress(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" /></div>
+                <div className="bg-blue-50 p-3 rounded text-xs text-blue-800 border border-blue-100 flex items-center justify-between">
+                  <div>
+                    <span className="block font-bold">Prazo de Retirada:</span>
+                    {(() => {
+                      if (!outputDate) return "Selecione a data";
+                      const [y, m, d] = outputDate.split('-').map(Number);
+                      const dateObj = new Date(y, m - 1, d);
+                      return addBusinessDays(dateObj, selectedPrizeForOutput.pickupDeadlineDays).toLocaleDateString();
+                    })()} ({selectedPrizeForOutput.pickupDeadlineDays} dias úteis)
+                  </div>
+                  <AlertTriangle size={16} className="opacity-50" />
+                </div>
+                <div className="flex gap-3 pt-4"><button type="button" onClick={() => { setOutputModalOpen(false); setSelectedPrizeForOutput(null); }} className="flex-1 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">Cancelar</button><button type="submit" className="flex-1 py-3 text-white bg-green-600 rounded-lg hover:bg-green-700 flex justify-center items-center gap-2 font-bold shadow-lg shadow-green-200"><Trophy size={18} /> Confirmar</button></div>
+              </form>
+            </div>
+          </div>
+        )
+      }
+
+      {
+        prizeDeleteModalOpen && prizeToDelete && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+              <div className="p-6 border-b border-gray-100 bg-red-50 rounded-t-xl flex items-center gap-3">
+                <div className="bg-red-100 p-2 rounded-full text-red-600"><AlertTriangle size={24} /></div>
+                <div><h3 className="text-lg font-bold text-gray-800">Excluir Prêmio?</h3><p className="text-xs text-red-600 font-semibold">Cuidado: Isso apaga o item do estoque.</p></div>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm">
+                  <p className="text-gray-500 mb-1">Você está prestes a excluir:</p>
+                  <p className="font-bold text-gray-800 text-lg">{prizeToDelete.name}</p>
+                  <p className="text-gray-600">Estoque Atual: {prizeToDelete.availableQuantity} / {prizeToDelete.totalQuantity}</p>
+                </div>
+
+                <p className="text-sm text-gray-600">
+                  Isso removerá o prêmio da lista de disponíveis para sorteio. O histórico de ganhadores deste prêmio <strong>não</strong> será apagado.
+                </p>
+
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setPrizeDeleteModalOpen(false)} className="flex-1 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">Cancelar</button>
+                  <button onClick={confirmDeletePrize} className="flex-1 py-3 text-white bg-red-600 rounded-lg hover:bg-red-700 font-bold shadow-lg shadow-red-200">Sim, Excluir</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {
+        deleteModalOpen && outputToDelete && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+              <div className="p-6 border-b border-gray-100 bg-red-50 rounded-t-xl flex items-center gap-3">
+                <div className="bg-red-100 p-2 rounded-full text-red-600"><AlertTriangle size={24} /></div>
+                <div><h3 className="text-lg font-bold text-gray-800">Confirmar Exclusão</h3><p className="text-xs text-red-600 font-semibold">Ação Irreversível</p></div>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm">
+                  <p className="text-gray-500 mb-1">Você está excluindo o registro de:</p>
+                  <p className="font-bold text-gray-800 text-lg">{outputToDelete.winnerName}</p>
+                  <p className="text-gray-600">{outputToDelete.prizeName} ({outputToDelete.quantity}x)</p>
+                </div>
+
+                {outputToDelete.status === 'PENDING' && (
+                  <div className="flex items-start gap-3 bg-amber-50 p-3 rounded-lg border border-amber-200 text-amber-800 text-sm">
+                    <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" />
+                    <p><strong>Atenção:</strong> Este item ainda consta como <u>Aguardando Retirada</u> na recepção. Certifique-se de que o ouvinte não está a caminho.</p>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setReturnToStock(!returnToStock)}>
+                  <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${returnToStock ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'}`}>
+                    {returnToStock && <RefreshCw size={12} className="text-white" />}
+                  </div>
+                  <div className="flex-1 select-none">
+                    <p className="font-bold text-gray-800 text-sm">Devolver ao Estoque?</p>
+                    <p className="text-xs text-gray-500">Se marcado, a quantidade ({outputToDelete.quantity}) será somada ao estoque atual.</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setDeleteModalOpen(false)} className="flex-1 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">Cancelar</button>
+                  <button onClick={confirmDeleteOutput} className="flex-1 py-3 text-white bg-red-600 rounded-lg hover:bg-red-700 font-bold shadow-lg shadow-red-200">Excluir Registro</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Edit Output Modal */}
+      {editingOutput && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8">
-            <div className="p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl"><h3 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Trophy size={20} className="text-indigo-600" /> Registrar Ganhador</h3><p className="text-sm text-gray-600 mt-1">Prêmio: <span className="font-bold text-blue-600">{selectedPrizeForOutput.name}</span></p></div>
-            <form onSubmit={handleRegisterOutput} className="p-6 space-y-4">
+            <div className="p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl">
+              <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <Settings size={20} className="text-blue-600" />
+                Editar Registro
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">Prêmio: <span className="font-bold">{editingOutput.prizeName}</span></p>
+            </div>
+            <form onSubmit={handleSaveEditedOutput} className="p-6 space-y-4">
+
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Qtd</label><input type="number" min="1" max={selectedPrizeForOutput.availableQuantity} required value={outputQuantity} onChange={e => setOutputQuantity(parseInt(e.target.value) || 1)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" /></div>
-                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Evento / Programa</label><input type="text" value={outputNote} onChange={e => setOutputNote(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" placeholder="Ex: Esporte em Debate" /></div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data do Sorteio</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={editingOutput.date ? new Date(editingOutput.date).toISOString().slice(0, 16) : ''}
+                    onChange={e => {
+                      const newDate = new Date(e.target.value);
+                      // Recalculate deadline
+                      // We need the prize's deadline days. We can try to find it in the prizes list.
+                      const prize = prizes.find(p => p.id === editingOutput.prizeId);
+                      let newDeadline = editingOutput.pickupDeadline;
+
+                      if (prize) {
+                        newDeadline = addBusinessDays(newDate, prize.pickupDeadlineDays).toISOString();
+                      }
+
+                      setEditingOutput({
+                        ...editingOutput,
+                        date: newDate.toISOString(),
+                        pickupDeadline: newDeadline
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Programa / Evento</label>
+                  <select
+                    value={editingOutput.programId || ''}
+                    onChange={e => setEditingOutput({ ...editingOutput, programId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                  >
+                    <option value="">Selecione um programa...</option>
+                    {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
               </div>
+
               <div className="border-t border-gray-100 pt-4 mt-2">
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome do Ganhador *</label>
-                <input type="text" required value={winnerName} onChange={e => setWinnerName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none font-medium" placeholder="Nome completo do ouvinte" autoComplete="off" />
-                {winnerHistory.length > 0 && (
-                  <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3"><div className="flex items-center gap-2 text-amber-800 font-bold text-xs uppercase mb-2"><History size={14} /> Histórico Encontrado ({winnerHistory.length})</div><div className="max-h-24 overflow-y-auto space-y-1">{winnerHistory.map(h => (<div key={h.id} className="text-xs text-amber-900 flex justify-between border-b border-amber-100 pb-1 last:border-0"><span>{new Date(h.date).toLocaleDateString()} - {h.prizeName}</span><span className="opacity-70">{h.note}</span></div>))}</div></div>
-                )}
+                <input
+                  type="text"
+                  required
+                  value={editingOutput.winnerName}
+                  onChange={e => setEditingOutput({ ...editingOutput, winnerName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium"
+                />
               </div>
+
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone</label><input type="tel" value={winnerPhone} onChange={e => setWinnerPhone(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" placeholder="(XX) 9XXXX-XXXX" /></div>
-                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">CPF / RG</label><input type="text" value={winnerDoc} onChange={e => setWinnerDoc(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" /></div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone</label>
+                  <input
+                    type="tel"
+                    value={editingOutput.winnerPhone}
+                    onChange={e => setEditingOutput({ ...editingOutput, winnerPhone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">CPF / RG</label>
+                  <input
+                    type="text"
+                    value={editingOutput.winnerDoc}
+                    onChange={e => setEditingOutput({ ...editingOutput, winnerDoc: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
               </div>
-              <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label><input type="email" value={winnerEmail} onChange={e => setWinnerEmail(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" /></div>
-              <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Endereço</label><input type="text" value={winnerAddress} onChange={e => setWinnerAddress(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" /></div>
-              <div className="bg-blue-50 p-3 rounded text-xs text-blue-800 border border-blue-100 flex items-center justify-between"><div><span className="block font-bold">Prazo de Retirada:</span>{addBusinessDays(new Date(), selectedPrizeForOutput.pickupDeadlineDays).toLocaleDateString()} ({selectedPrizeForOutput.pickupDeadlineDays} dias úteis)</div><AlertTriangle size={16} className="opacity-50" /></div>
-              <div className="flex gap-3 pt-4"><button type="button" onClick={() => setOutputModalOpen(false)} className="flex-1 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">Cancelar</button><button type="submit" className="flex-1 py-3 text-white bg-green-600 rounded-lg hover:bg-green-700 flex justify-center items-center gap-2 font-bold shadow-lg shadow-green-200"><Trophy size={18} /> Confirmar</button></div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
+                <input
+                  type="email"
+                  value={editingOutput.winnerEmail}
+                  onChange={e => setEditingOutput({ ...editingOutput, winnerEmail: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Endereço</label>
+                <input
+                  type="text"
+                  value={editingOutput.winnerAddress}
+                  onChange={e => setEditingOutput({ ...editingOutput, winnerAddress: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingOutput(null)}
+                  className="flex-1 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex justify-center items-center gap-2 font-bold shadow-lg shadow-blue-200"
+                >
+                  <Settings size={18} />
+                  Salvar Alterações
+                </button>
+              </div>
             </form>
           </div>
         </div>
       )}
 
+      {/* Script Configuration Modal */}
+      {scriptConfigModalOpen && selectedPrizeForScript && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl">
+              <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <FileText size={20} className="text-blue-600" />
+                Gerar Roteiro
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">Prêmio: <span className="font-bold">{selectedPrizeForScript.name}</span></p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Para qual programa?</label>
+                <select
+                  value={scriptProgramId}
+                  onChange={(e) => setScriptProgramId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                >
+                  <option value="">Selecione um programa...</option>
+                  {programs.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="p-4 bg-gray-50 rounded-b-xl flex justify-end gap-3">
+              <button
+                onClick={() => setScriptConfigModalOpen(false)}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmGenerateScript}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-lg shadow-blue-200 transition-colors flex items-center gap-2"
+              >
+                <FileText size={18} />
+                Gerar Roteiro
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Generated Script Modal */}
       {scriptModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl">
@@ -539,18 +1330,153 @@ const App: React.FC = () => {
             <div className="p-6"><textarea value={generatedScript} readOnly className="w-full h-48 p-4 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-mono text-sm leading-relaxed resize-none focus:outline-none" /><div className="flex gap-3 mt-4"><button onClick={() => setScriptModalOpen(false)} className="flex-1 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Fechar</button><button onClick={copyToClipboard} className="flex-1 py-3 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 font-bold flex items-center justify-center gap-2"><Copy size={18} /> Copiar Texto</button></div></div>
           </div>
         </div>
-      )}
+      )
+      }
 
-      {shareModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl"><h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Share2 size={20} className="text-teal-600" /> Links de Acesso</h3><button onClick={() => setShareModalOpen(false)} className="text-gray-500 hover:text-gray-700"><X size={20} /></button></div>
-            <div className="p-6 space-y-6"><div className="space-y-4"><p className="text-sm text-gray-500">Envie estes links para que sua equipe acesse o sistema sem precisar de senha.<br /><span className="text-xs text-red-500 font-bold">Importante: O site precisa estar publicado no GitHub para os links funcionarem em outros computadores.</span></p><div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Locutor / Operador</label><div className="flex gap-2"><input type="text" readOnly value={getShareLink('OPERATOR')} className="flex-1 bg-gray-50 border border-gray-200 p-2 rounded text-xs text-gray-600" /><button onClick={() => { navigator.clipboard.writeText(getShareLink('OPERATOR')); addToast('Link Copiado!', 'success'); }} className="bg-indigo-100 text-indigo-700 px-3 rounded hover:bg-indigo-200"><Copy size={16} /></button><a href={getShareLink('OPERATOR')} target="_blank" rel="noopener noreferrer" className="bg-gray-100 text-gray-700 px-3 rounded hover:bg-gray-200 flex items-center"><ExternalLink size={16} /></a></div></div><div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Recepção</label><div className="flex gap-2"><input type="text" readOnly value={getShareLink('RECEPTION')} className="flex-1 bg-gray-50 border border-gray-200 p-2 rounded text-xs text-gray-600" /><button onClick={() => { navigator.clipboard.writeText(getShareLink('RECEPTION')); addToast('Link Copiado!', 'success'); }} className="bg-green-100 text-green-700 px-3 rounded hover:bg-green-200"><Copy size={16} /></button><a href={getShareLink('RECEPTION')} target="_blank" rel="noopener noreferrer" className="bg-gray-100 text-gray-700 px-3 rounded hover:bg-gray-200 flex items-center"><ExternalLink size={16} /></a></div></div></div></div>
+      {
+        shareModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl"><h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Share2 size={20} className="text-teal-600" /> Links de Acesso</h3><button onClick={() => setShareModalOpen(false)} className="text-gray-500 hover:text-gray-700"><X size={20} /></button></div>
+              <div className="p-6 space-y-6"><div className="space-y-4"><p className="text-sm text-gray-500">Envie estes links para que sua equipe acesse o sistema sem precisar de senha.<br /><span className="text-xs text-red-500 font-bold">Importante: O site precisa estar publicado no GitHub para os links funcionarem em outros computadores.</span></p><div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Locutor / Operador</label><div className="flex gap-2"><input type="text" readOnly value={getShareLink('OPERATOR')} className="flex-1 bg-gray-50 border border-gray-200 p-2 rounded text-xs text-gray-600" /><button onClick={() => { navigator.clipboard.writeText(getShareLink('OPERATOR')); addToast('Link Copiado!', 'success'); }} className="bg-indigo-100 text-indigo-700 px-3 rounded hover:bg-indigo-200"><Copy size={16} /></button><a href={getShareLink('OPERATOR')} target="_blank" rel="noopener noreferrer" className="bg-gray-100 text-gray-700 px-3 rounded hover:bg-gray-200 flex items-center"><ExternalLink size={16} /></a></div></div><div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Recepção</label><div className="flex gap-2"><input type="text" readOnly value={getShareLink('RECEPTION')} className="flex-1 bg-gray-50 border border-gray-200 p-2 rounded text-xs text-gray-600" /><button onClick={() => { navigator.clipboard.writeText(getShareLink('RECEPTION')); addToast('Link Copiado!', 'success'); }} className="bg-green-100 text-green-700 px-3 rounded hover:bg-green-200"><Copy size={16} /></button><a href={getShareLink('RECEPTION')} target="_blank" rel="noopener noreferrer" className="bg-gray-100 text-gray-700 px-3 rounded hover:bg-gray-200 flex items-center"><ExternalLink size={16} /></a></div></div></div></div>
+            </div>
+          </div>
+        )
+      }
+      {/* View Output Modal (Reception) */}
+      {viewingOutput && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8">
+            <div className="p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <Users size={20} className="text-blue-600" />
+                  Detalhes do Ganhador
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">Prêmio: <span className="font-bold">{viewingOutput.prizeName}</span></p>
+              </div>
+              <button onClick={() => setViewingOutput(null)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+            </div>
+            <div className="p-6 space-y-6">
+
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <p className="text-xs font-bold text-blue-800 uppercase mb-1">Nome Completo</p>
+                <p className="text-lg font-bold text-gray-900">{viewingOutput.winnerName}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">Telefone</p>
+                  <p className="font-medium text-gray-800">{viewingOutput.winnerPhone || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">Documento (CPF/RG)</p>
+                  <p className="font-medium text-gray-800">{viewingOutput.winnerDoc || '-'}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase mb-1">Email</p>
+                <p className="font-medium text-gray-800">{viewingOutput.winnerEmail || '-'}</p>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase mb-1">Endereço</p>
+                <p className="font-medium text-gray-800 bg-gray-50 p-3 rounded border border-gray-200">{viewingOutput.winnerAddress || '-'}</p>
+              </div>
+
+              <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">Programa</p>
+                  <p className="text-sm font-medium text-gray-800">{viewingOutput.programName || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">Data Sorteio</p>
+                  <p className="text-sm font-medium text-gray-800">{new Date(viewingOutput.date).toLocaleDateString()} às {new Date(viewingOutput.date).toLocaleTimeString().slice(0, 5)}</p>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => setViewingOutput(null)}
+                  className="w-full py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-bold shadow-lg shadow-blue-200"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
+
+      {/* View Output Modal (Reception) */}
+      {viewingOutput && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8">
+            <div className="p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <Users size={20} className="text-blue-600" />
+                  Detalhes do Ganhador
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">Prêmio: <span className="font-bold">{viewingOutput.prizeName}</span></p>
+              </div>
+              <button onClick={() => setViewingOutput(null)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+            </div>
+            <div className="p-6 space-y-6">
+
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <p className="text-xs font-bold text-blue-800 uppercase mb-1">Nome Completo</p>
+                <p className="text-lg font-bold text-gray-900">{viewingOutput.winnerName}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">Telefone</p>
+                  <p className="font-medium text-gray-800">{viewingOutput.winnerPhone || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">Documento (CPF/RG)</p>
+                  <p className="font-medium text-gray-800">{viewingOutput.winnerDoc || '-'}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase mb-1">Email</p>
+                <p className="font-medium text-gray-800">{viewingOutput.winnerEmail || '-'}</p>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase mb-1">Endereço</p>
+                <p className="font-medium text-gray-800 bg-gray-50 p-3 rounded border border-gray-200">{viewingOutput.winnerAddress || '-'}</p>
+              </div>
+
+              <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">Programa</p>
+                  <p className="text-sm font-medium text-gray-800">{viewingOutput.programName || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">Data Sorteio</p>
+                  <p className="text-sm font-medium text-gray-800">{new Date(viewingOutput.date).toLocaleDateString()} às {new Date(viewingOutput.date).toLocaleTimeString().slice(0, 5)}</p>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => setViewingOutput(null)}
+                  className="w-full py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-bold shadow-lg shadow-blue-200"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ToastContainer toasts={toasts} removeToast={removeToast} />
-    </div>
+    </div >
   );
 };
 
