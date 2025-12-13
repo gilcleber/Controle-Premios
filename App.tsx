@@ -369,7 +369,7 @@ const App: React.FC = () => {
     setSelectedPrizeForOutput(null);
     setTimeout(() => {
       setSelectedPrizeForOutput(prize);
-      setOutputQuantity(prize.availableQuantity); // Default to max available
+      setOutputQuantity(1); // Default to 1 as per user request
       setOutputNote('');
       setWinnerName('');
       setWinnerPhone('');
@@ -994,7 +994,7 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Qtd</label><input type="number" min="1" max={selectedPrizeForOutput.availableQuantity} required value={outputQuantity} onChange={e => setOutputQuantity(parseInt(e.target.value) || 1)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" /></div>
+                  {/* QTD Input removed as per user request */}
                 </div>
 
                 <div>
@@ -1008,60 +1008,7 @@ const App: React.FC = () => {
                   />
                 </div>
 
-                {/* Combo / Additional Prizes Section */}
-                <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
-                  <label className="block text-xs font-bold text-indigo-800 uppercase mb-2 flex items-center gap-2">
-                    <PackagePlus size={14} /> Adicionar + Prêmios (Combo)
-                  </label>
-                  <div className="space-y-2">
-                    {additionalPrizes.map((extra, index) => {
-                      const p = prizes.find(p => p.id === extra.prizeId);
-                      return (
-                        <div key={index} className="flex gap-2 items-center text-sm bg-white p-2 rounded border border-indigo-100">
-                          <span className="font-bold text-gray-700 flex-1">{p?.name}</span>
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs text-gray-500">Qtd:</span>
-                            <input
-                              type="number"
-                              min="1"
-                              max={p?.availableQuantity || 1}
-                              value={extra.quantity}
-                              onChange={(e) => {
-                                const newQty = parseInt(e.target.value) || 1;
-                                setAdditionalPrizes(prev => prev.map((item, i) => i === index ? { ...item, quantity: newQty } : item));
-                              }}
-                              className="w-16 px-2 py-1 border border-gray-300 rounded text-center focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                            />
-                          </div>
-                          <button type="button" onClick={() => setAdditionalPrizes(prev => prev.filter((_, i) => i !== index))} className="text-red-500 hover:text-red-700"><X size={14} /></button>
-                        </div>
-                      );
-                    })}
-                    <div className="flex gap-2">
-                      <select
-                        className="flex-1 text-xs border border-gray-300 rounded p-1.5"
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            const prizeId = e.target.value;
-                            const prize = prizes.find(p => p.id === prizeId);
-                            if (prize) {
-                              const exists = additionalPrizes.find(a => a.prizeId === prizeId);
-                              if (!exists) {
-                                setAdditionalPrizes(prev => [...prev, { prizeId, quantity: 1 }]);
-                              }
-                            }
-                            e.target.value = ""; // Reset select
-                          }
-                        }}
-                      >
-                        <option value="">+ Selecionar prêmio extra...</option>
-                        {prizes.filter(p => p.id !== selectedPrizeForOutput.id && p.availableQuantity > 0 && !p.isOnAir).map(p => (
-                          <option key={p.id} value={p.id}>{p.name} (Disp: {p.availableQuantity})</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
+                {/* Combo Section removed as per user request - Logic still runs in background */}
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Programa / Evento</label>
                   <select value={outputProgramId} onChange={e => setOutputProgramId(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none bg-white">
