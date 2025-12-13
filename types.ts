@@ -10,6 +10,7 @@ export interface Prize {
   maxDrawDate: string; // ISO Date - Prazo máximo para sortear
   pickupDeadlineDays: number; // Dias úteis para retirada
   isOnAir?: boolean; // Se true, aparece na tela do locutor
+  comboDetails?: { prizeId: string, quantity: number }[]; // Detalhes do combo para evitar duplo débito
 }
 
 export interface Program {

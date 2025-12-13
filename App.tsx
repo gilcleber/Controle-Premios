@@ -255,6 +255,8 @@ const App: React.FC = () => {
     // Logic to handle additional prizes (Combos)
     if (additionalPrizes && additionalPrizes.length > 0) {
       let extraNames = [];
+      prize.comboDetails = additionalPrizes; // Store combo details for future reference
+
       for (const extra of additionalPrizes) {
         const extraPrize = prizes.find(p => p.id === extra.prizeId);
         if (extraPrize) {
@@ -377,7 +379,14 @@ const App: React.FC = () => {
       setOutputType('DRAW');
       setOutputProgramId(programs.length > 0 ? programs[0].id : '');
       setOutputDate(new Date().toISOString().split('T')[0]); // Default to today
-      setAdditionalPrizes([]); // Reset additional prizes
+
+      // Pre-fill additional prizes if they exist in comboDetails
+      if (prize.comboDetails && prize.comboDetails.length > 0) {
+        setAdditionalPrizes(prize.comboDetails);
+      } else {
+        setAdditionalPrizes([]);
+      }
+
       setOutputModalOpen(true);
     }, 0);
   };
@@ -440,6 +449,7 @@ const App: React.FC = () => {
     await supabase.from('prizes').update({ availableQuantity: newQuantity }).eq('id', selectedPrizeForOutput.id);
 
     // 2. Register Additional Prizes (Combos)
+    // 2. Register Additional Prizes (Combos)
     for (const extra of additionalPrizes) {
       const extraPrize = prizes.find(p => p.id === extra.prizeId);
       if (extraPrize) {
@@ -454,8 +464,19 @@ const App: React.FC = () => {
 
         await supabase.from('outputs').insert(extraOutput);
 
-        const extraNewQty = extraPrize.availableQuantity - extra.quantity;
-        await supabase.from('prizes').update({ availableQuantity: extraNewQty }).eq('id', extraPrize.id);
+        // Check if this item was already debited as part of the combo package
+        const preDebitedItem = selectedPrizeForOutput.comboDetails?.find(
+          c => c.prizeId === extra.prizeId
+        );
+
+        // Calculate how much to debit (Current Quantity - Pre-debited Quantity)
+        // If result is <= 0, it means it's fully covered by the pre-debit.
+        const quantityToDebit = extra.quantity - (preDebitedItem ? preDebitedItem.quantity : 0);
+
+        if (quantityToDebit > 0) {
+          const extraNewQty = extraPrize.availableQuantity - quantityToDebit;
+          await supabase.from('prizes').update({ availableQuantity: extraNewQty }).eq('id', extraPrize.id);
+        }
       }
     }
 
