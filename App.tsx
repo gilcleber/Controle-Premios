@@ -609,6 +609,43 @@ const App: React.FC = () => {
     setScriptConfigModalOpen(true);
   };
 
+  const generateDynamicScript = (programName: string, prize: Prize, pickupDateStr: string) => {
+    const quantity = prize.availableQuantity;
+    const quantityText = quantity > 1 ? `HOJE TEMOS ${quantity} PRÊMIOS` : "HOJE TEMOS UM PRÊMIO ESPECIAL";
+    const winnerText = quantity > 1 ? `PARA ${quantity} OUVINTES` : "PARA UM OUVINTE DE SORTE";
+
+    const intros = [
+      `E HOJE AQUI NO ${programName.toUpperCase()} VOCÊ QUE PARTICIPA PELO YOUTUBE PODE GANHAR PRÊMIOS.`,
+      `ATENÇÃO OUVINTES DO ${programName.toUpperCase()}! CHEGOU A HORA DE GANHAR PRÊMIOS NO YOUTUBE.`,
+      `QUEM TÁ LIGADO NO ${programName.toUpperCase()} PELO YOUTUBE TEM CHANCE DE GANHAR AGORA!`,
+      `O ${programName.toUpperCase()} TÁ CHEIO DE PRÊMIOS HOJE PRA QUEM TÁ NO YOUTUBE!`,
+    ];
+
+    const bodies = [
+      `${quantityText} ${winnerText}: *${prize.name.toUpperCase()}*!`,
+      `OLHA SÓ O QUE SEPARAMOS PRA VOCÊS: *${prize.name.toUpperCase()}*! ${quantityText}!`,
+      `O PRÊMIO DE HOJE É TOP: *${prize.name.toUpperCase()}*! ${winnerText} VAI LEVAR!`,
+      `QUER GANHAR *${prize.name.toUpperCase()}*? ${quantityText} ESPERANDO POR VOCÊ!`,
+    ];
+
+    const ctas = [
+      "E PARA PARTICIPAR ENTRE AGORA NA TRANSMISSÃO DO YOUTUBE DA RÁDIOBANDEIRANTESCAMPINAS PREENCHA O FORMULÁRIO QUE ESTA FIXADO NOS COMENTARIOS OU ACESSE NOSSO SITE WWW.RADIOBANDEIRANTESCAMPINAS.COM.BR / VA ATE PROMOÇÕES E PREENCHA O FORMULARIO E BOA SORTE.",
+      "CORRE PRO YOUTUBE DA RÁDIOBANDEIRANTESCAMPINAS! O LINK TÁ FIXADO NO CHAT. OU VAI NO SITE WWW.RADIOBANDEIRANTESCAMPINAS.COM.BR NA ABA PROMOÇÕES. NÃO PERDE TEMPO!",
+      "PRA CONCORRER É FÁCIL: ENTRA NO YOUTUBE DA RÁDIOBANDEIRANTESCAMPINAS E CLICA NO LINK FIXADO. OU ACESSE WWW.RADIOBANDEIRANTESCAMPINAS.COM.BR E SE INSCREVE EM PROMOÇÕES!",
+      "JÁ SE INSCREVEU? O LINK TÁ NOS COMENTÁRIOS DO YOUTUBE DA RÁDIOBANDEIRANTESCAMPINAS OU NO NOSSO SITE WWW.RADIOBANDEIRANTESCAMPINAS.COM.BR. BOA SORTE!",
+    ];
+
+    const outros = [
+      "VAMOS DIVULGAR O GANHADOR NO FINAL DO PROGRAMA. E SE VOCÊ NÃO TIVER COMO BUSCAR O PREMIO, ENTÃO NEM PARTICIPE, DEIXE PARA OUTRA PESSOA, POIS, A RETIRADA É OBRIGATÓRIA DA PESSOA SORTEADA.",
+      "O RESULTADO SAI NO FINAL DO PROGRAMA! LEMBRANDO: TEM QUE VIR BUSCAR O PRÊMIO, SE NÃO PUDER, NÃO TIRE A CHANCE DE OUTRO OUVINTE. RETIRADA OBRIGATÓRIA!",
+      "FIQUE LIGADO QUE NO FINAL DO PROGRAMA A GENTE CONTA QUEM GANHOU. IMPORTANTE: A RETIRADA É PRESENCIAL E OBRIGATÓRIA, SÓ PARTICIPE SE PUDER VIR BUSCAR!",
+    ];
+
+    const getRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
+    return `${getRandom(intros)}\n${getRandom(bodies)}\n${getRandom(ctas)}\n${getRandom(outros)}\nRETIRADA ATÉ DIA ${pickupDateStr}`;
+  };
+
   const confirmGenerateScript = () => {
     if (!selectedPrizeForScript) return;
 
@@ -616,11 +653,10 @@ const App: React.FC = () => {
     const programName = selectedProgram ? selectedProgram.name : "Esporte em Debate";
 
     const today = new Date();
-    const todayStr = today.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
     const pickupDate = addBusinessDays(today, selectedPrizeForScript.pickupDeadlineDays);
     const pickupDateStr = pickupDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
-    const script = `${todayStr}\nE HOJE AQUI NO ${programName.toUpperCase()} VOCÊ QUE PARTICIPA PELO YOUTUBE PODE GANHAR PREMIOS.\n*${selectedPrizeForScript.name.toUpperCase()}*\nE PARA PARTICIPAR ENTRE AGORA NA TRANSMISSÃO DO YOUTUBE DA RÁDIOBANDEIRANTESCAMPINAS PREENCHA O FORMULÁRIO QUE ESTA FIXADO NOS COMENTARIOS OU ACESSE NOSSO SITE\nWWW.RADIOBANDEIRANTESCAMPINAS.COM.BR / VA ATE PROMOÇÕES E PREENCHA O FORMULARIO E BOA SORTE. VAMOS DIVULGAR O GANHADOR NO FINAL DO PROGRAMA\nE SE VOCÊ NÃO TIVER COMO BUSCAR O PREMIO, ENTÃO NEM PARTICIPE, DEIXE PARA OUTRA PESSOA, POIS, A RETIRADA É OBRIGATÓRIA DA PESSOA SORTEADA.\nRETIRADA ATÉ DIA ${pickupDateStr}`;
+    const script = generateDynamicScript(programName, selectedPrizeForScript, pickupDateStr);
 
     setGeneratedScript(script);
     setScriptConfigModalOpen(false);
