@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { PrizeOutput, UserRole } from '../types';
-import { CheckCircle, Clock, AlertOctagon, Edit2, Trash2, User, Phone, MapPin, FileText } from 'lucide-react';
+import { CheckCircle, Clock, AlertOctagon, Edit2, Trash2, User, Phone, MapPin, FileText, CalendarPlus, MessageCircle, Eye } from 'lucide-react';
 
 interface OutputListProps {
   winners: PrizeOutput[];
@@ -9,9 +9,11 @@ interface OutputListProps {
   onConfirmPickup: (outputId: string) => void;
   onEdit: (output: PrizeOutput) => void;
   onDelete: (outputId: string) => void;
+  onExtendDeadline?: (outputId: string) => void;
+  onView?: (output: PrizeOutput) => void;
 }
 
-export const WinnerList: React.FC<OutputListProps> = ({ winners, role, onConfirmPickup, onEdit, onDelete }) => {
+export const WinnerList: React.FC<OutputListProps> = ({ winners, role, onConfirmPickup, onEdit, onDelete, onExtendDeadline, onView }) => {
   const isAdmin = role === 'ADMIN';
   const isReception = role === 'RECEPTION';
 
@@ -38,9 +40,9 @@ export const WinnerList: React.FC<OutputListProps> = ({ winners, role, onConfirm
               </tr>
             ) : (
               winners.map((output) => {
-                 const isLate = output.status === 'PENDING' && new Date(output.pickupDeadline) < new Date();
-                 
-                 return (
+                const isLate = output.status === 'PENDING' && new Date(output.pickupDeadline) < new Date();
+
+                return (
                   <tr key={output.id} className="hover:bg-gray-50 transition-colors">
                     <td className="p-4">
                       <div className="flex items-center gap-2">
@@ -76,7 +78,7 @@ export const WinnerList: React.FC<OutputListProps> = ({ winners, role, onConfirm
                           </div>
                         )}
                         {output.winnerEmail && (
-                           <div className="text-xs text-gray-400 truncate max-w-[150px]">{output.winnerEmail}</div>
+                          <div className="text-xs text-gray-400 truncate max-w-[150px]">{output.winnerEmail}</div>
                         )}
                       </div>
                     </td>
@@ -92,7 +94,7 @@ export const WinnerList: React.FC<OutputListProps> = ({ winners, role, onConfirm
                           <CheckCircle size={12} /> Entregue
                         </span>
                       ) : isLate ? (
-                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                           <AlertOctagon size={12} /> Expirado
                         </span>
                       ) : (
@@ -103,13 +105,46 @@ export const WinnerList: React.FC<OutputListProps> = ({ winners, role, onConfirm
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {/* Recepção e Admin podem confirmar entrega */}
-                        {(isAdmin || isReception) && output.status === 'PENDING' && (
+                        {/* Reception: View Details */}
+                        {isReception && onView && (
+                          <button
+                            onClick={() => onView(output)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Ver Detalhes"
+                          >
+                            <Eye size={16} />
+                          </button>
+                        )}
+
+                        {/* Recepção e Admin podem confirmar entrega, MAS APENAS SE NÃO ESTIVER EXPIRADO */}
+                        {(isAdmin || isReception) && output.status === 'PENDING' && !isLate && (
                           <button
                             onClick={() => onConfirmPickup(output.id)}
                             className="mr-2 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors shadow-sm whitespace-nowrap"
                           >
                             Entregar
+                          </button>
+                        )}
+
+                        {/* Se estiver expirado e for Recepção, mostra botão do WhatsApp */}
+                        {isReception && isLate && output.status === 'PENDING' && (
+                          <a
+                            href={`https://wa.me/5519999999999?text=Olá, o ouvinte ${output.winnerName} veio retirar o prêmio ${output.prizeName} mas está vencido (Limite: ${new Date(output.pickupDeadline).toLocaleDateString()}). Pode liberar?`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mr-2 px-3 py-1.5 bg-green-100 text-green-700 text-xs font-medium rounded hover:bg-green-200 transition-colors shadow-sm whitespace-nowrap flex items-center gap-1"
+                          >
+                            <MessageCircle size={12} /> Chamar Gestor
+                          </a>
+                        )}
+
+                        {/* Admin pode estender prazo de itens vencidos */}
+                        {isAdmin && isLate && onExtendDeadline && (
+                          <button
+                            onClick={() => onExtendDeadline(output.id)}
+                            className="mr-2 px-3 py-1.5 bg-amber-100 text-amber-700 text-xs font-medium rounded hover:bg-amber-200 transition-colors shadow-sm whitespace-nowrap flex items-center gap-1"
+                          >
+                            <CalendarPlus size={12} /> Estender
                           </button>
                         )}
 
@@ -135,12 +170,12 @@ export const WinnerList: React.FC<OutputListProps> = ({ winners, role, onConfirm
                       </div>
                     </td>
                   </tr>
-                 );
+                );
               })
             )}
           </tbody>
         </table>
       </div>
-    </div>
+    </div >
   );
 };

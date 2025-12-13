@@ -48,13 +48,11 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
                   <div className="bg-indigo-50 text-indigo-700 p-2 rounded-lg">
                     <Gift size={24} />
                   </div>
-                  <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full uppercase">
-                    Restam: {prize.availableQuantity}
-                  </span>
+
                 </div>
-                
+
                 <h3 className="text-xl font-bold text-gray-900 mb-2 leading-tight min-h-[3.5rem]">
-                  {prize.name}
+                  {prize.availableQuantity} {prize.name}
                 </h3>
                 <p className="text-sm text-gray-500 mb-6 line-clamp-2">
                   {prize.description || 'Sem descrição adicional.'}
@@ -108,12 +106,12 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
                 const expiredDraw = isExpired(prize.maxDrawDate);
                 const expiredValidity = isExpired(prize.validityDate);
                 const hasStock = prize.availableQuantity > 0;
-                
+
                 return (
                   <tr key={prize.id} className="hover:bg-gray-50 transition-colors">
                     <td className="p-4">
                       {isAdmin && onToggleOnAir && (
-                        <button 
+                        <button
                           onClick={() => onToggleOnAir(prize)}
                           className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-all ${prize.isOnAir ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
                           title={prize.isOnAir ? "Visível para Locutor" : "Oculto do Locutor"}
@@ -127,9 +125,9 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
                       <div className="font-semibold text-gray-900">{prize.name}</div>
                       <div className="text-sm text-gray-500 line-clamp-1">{prize.description}</div>
                       {expiredValidity && (
-                         <span className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full mt-1">
-                           <AlertTriangle size={10} /> Validade Vencida
-                         </span>
+                        <span className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full mt-1">
+                          <AlertTriangle size={10} /> Validade Vencida
+                        </span>
                       )}
                     </td>
                     <td className="p-4 text-center">
@@ -141,20 +139,20 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
                       </div>
                     </td>
                     <td className="p-4">
-                       <div className="space-y-1 text-xs text-gray-600">
-                         <div className="flex items-center gap-2" title="Validade">
-                           <Calendar size={12} className="text-blue-400"/> 
-                           <span className={expiredValidity ? 'text-red-500 font-medium' : ''}>
-                             Val: {new Date(prize.validityDate).toLocaleDateString()}
-                           </span>
-                         </div>
-                         <div className="flex items-center gap-2" title="Prazo Máximo Sorteio">
-                            <Calendar size={12} className="text-orange-400"/>
-                            <span className={expiredDraw ? 'text-red-500 font-medium' : ''}>
-                              Max Sorteio: {new Date(prize.maxDrawDate).toLocaleDateString()}
-                            </span>
-                         </div>
-                       </div>
+                      <div className="space-y-1 text-xs text-gray-600">
+                        <div className="flex items-center gap-2" title="Validade">
+                          <Calendar size={12} className="text-blue-400" />
+                          <span className={expiredValidity ? 'text-red-500 font-medium' : ''}>
+                            Val: {new Date(prize.validityDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2" title="Prazo Máximo Sorteio">
+                          <Calendar size={12} className="text-orange-400" />
+                          <span className={expiredDraw ? 'text-red-500 font-medium' : ''}>
+                            Max Sorteio: {new Date(prize.maxDrawDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -165,7 +163,7 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
                         >
                           <FileText size={18} />
                         </button>
-                        
+
                         <button
                           onClick={() => onDraw(prize)}
                           disabled={!hasStock || expiredDraw || expiredValidity}
