@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [prizes, setPrizes] = useState<Prize[]>([]);
   const [outputs, setOutputs] = useState<PrizeOutput[]>([]);
   const [activeTab, setActiveTab] = useState<TabView>('DASHBOARD');
+  const [receptionTab, setReceptionTab] = useState<'PENDING' | 'DELIVERED' | 'EXPIRED'>('PENDING');
 
   // --- UI State ---
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -117,14 +118,28 @@ const App: React.FC = () => {
       (output.winnerDoc && output.winnerDoc.includes(q))
     );
   }).filter(output => {
-    // Filtro para Recepção: Não mostrar itens expirados HÁ MAIS DE 1 DIA
+    // Filtro para Recepção
     if (userRole === 'RECEPTION') {
       const deadline = new Date(output.pickupDeadline);
-      const toleranceDate = new Date(deadline);
-      toleranceDate.setDate(toleranceDate.getDate() + 1); // +1 dia de tolerância
+      const now = new Date();
+      // Reset time for strict date comparison if needed, but loose comparison is usually fine
+      const isExpired = output.status === 'PENDING' && deadline < now;
 
-      const isExpiredAndHidden = output.status === 'PENDING' && toleranceDate < new Date();
-      return !isExpiredAndHidden;
+      if (receptionTab === 'PENDING') {
+        return output.status === 'PENDING' && !isExpired;
+      }
+      if (receptionTab === 'DELIVERED') {
+        const deliveredDate = new Date(output.deliveredDate || output.date);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return output.status === 'DELIVERED' && deliveredDate > thirtyDaysAgo; // Show only last 30 days
+      }
+      if (receptionTab === 'EXPIRED') {
+        // Show expired items only for 5 days after deadline
+        const expirationLimit = new Date(deadline);
+        expirationLimit.setDate(expirationLimit.getDate() + 5);
+        return isExpired && now <= expirationLimit;
+      }
     }
     return true;
   });
@@ -411,7 +426,12 @@ const App: React.FC = () => {
     // Ideally, we just want the date part. new Date('YYYY-MM-DD') creates UTC.
     // Let's ensure we treat it as local.
     const [year, month, day] = outputDate.split('-').map(Number);
-    const dateObj = new Date(year, month - 1, day);
+
+    // Check if selected date is TODAY. If so, use current time.
+    const todayStr = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
+    const isToday = outputDate === todayStr;
+
+    const dateObj = isToday ? new Date() : new Date(year, month - 1, day, 12, 0, 0); // Noon to avoid timezone shifts for past dates
 
     const deadlineDate = addBusinessDays(dateObj, selectedPrizeForOutput.pickupDeadlineDays);
 
@@ -957,10 +977,33 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                <div className="mb-4 flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm max-w-md">
-                  <Search size={20} className="text-gray-400 ml-2" />
-                  <input type="text" placeholder="Buscar por ganhador, prêmio ou data..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-800 placeholder-gray-400" />
-                  {searchQuery && <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600 p-1"><X size={16} /></button>}
+                <div className="mb-4 flex flex-col md:flex-row gap-4 justify-between items-center">
+                  <div className="flex bg-gray-200 p-1 rounded-lg">
+                    <button
+                      onClick={() => setReceptionTab('PENDING')}
+                      className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${receptionTab === 'PENDING' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-800'}`}
+                    >
+                      Aguardando
+                    </button>
+                    <button
+                      onClick={() => setReceptionTab('DELIVERED')}
+                      className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${receptionTab === 'DELIVERED' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-600 hover:text-gray-800'}`}
+                    >
+                      Entregues
+                    </button>
+                    <button
+                      onClick={() => setReceptionTab('EXPIRED')}
+                      className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${receptionTab === 'EXPIRED' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-600 hover:text-gray-800'}`}
+                    >
+                      Expirados (5 dias)
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm w-full md:w-auto">
+                    <Search size={20} className="text-gray-400 ml-2" />
+                    <input type="text" placeholder="Buscar por ganhador..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-800 placeholder-gray-400" />
+                    {searchQuery && <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600 p-1"><X size={16} /></button>}
+                  </div>
                 </div>
 
                 <WinnerList
