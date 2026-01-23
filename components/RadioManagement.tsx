@@ -30,8 +30,8 @@ export const RadioManagement: React.FC<RadioManagementProps> = ({ onStationsUpda
     };
 
     const generateAccessLink = (slug: string) => {
-        const baseUrl = window.location.origin;
-        return `${baseUrl}/radio/${slug}`;
+        const baseUrl = window.location.origin + window.location.pathname;
+        return `${baseUrl}?radio=${slug}`;
     };
 
     const copyToClipboard = async (stationId: string, link: string, pin: string) => {
@@ -164,8 +164,8 @@ export const RadioManagement: React.FC<RadioManagementProps> = ({ onStationsUpda
                                                 <button
                                                     onClick={() => copyToClipboard(station.id, link, pin)}
                                                     className={`p-2 rounded-lg transition-all ${copiedId === station.id
-                                                            ? 'bg-green-100 text-green-600'
-                                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                        ? 'bg-green-100 text-green-600'
+                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                                         }`}
                                                     title="Copiar Link + PIN"
                                                 >
