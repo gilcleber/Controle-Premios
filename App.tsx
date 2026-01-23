@@ -12,6 +12,7 @@ import { StationSelector } from './components/StationSelector';
 import { Dashboard } from './components/Dashboard';
 import { ManageStationsModal } from './components/ManageStationsModal';
 import { RadioManagement } from './components/RadioManagement';
+import { RadioLoginPage } from './components/RadioLoginPage';
 import { getItemPhotos } from './services/photoUpload';
 import { LayoutDashboard, Gift, Users, Radio, ClipboardList, LogOut, X, History, AlertTriangle, Shield, Share2, Lock, RefreshCw, Search, Trophy, PackagePlus, Zap, Copy, ExternalLink, FileText, Database, Settings, Mic2, Gift as GiftIcon, Plus, Warehouse, Edit2 } from 'lucide-react';
 import { ToastContainer, ToastMessage, ToastType } from './components/Toast';
@@ -99,6 +100,25 @@ const App: React.FC = () => {
     // Carregar do localStorage
     return localStorage.getItem('selectedStationId') || null;
   });
+
+  // --- Radio Mode State (NEW) ---
+  const [currentRadio, setCurrentRadio] = useState<RadioStation | null>(() => {
+    const saved = localStorage.getItem('currentRadio');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [isRadioMode, setIsRadioMode] = useState(false);
+  const [radioSlug, setRadioSlug] = useState<string | null>(null);
+
+  // Check for radio mode on mount
+  useEffect(() => {
+    const path = window.location.pathname;
+    const radioMatch = path.match(/^\/radio\/([^\/]+)/);
+
+    if (radioMatch) {
+      setRadioSlug(radioMatch[1]);
+      setIsRadioMode(true);
+    }
+  }, []);
 
 
   const [editStationModalOpen, setEditStationModalOpen] = useState(false); // NEW
@@ -920,6 +940,29 @@ const App: React.FC = () => {
   const totalAvailable = prizes.reduce((acc, curr) => acc + curr.availableQuantity, 0);
   const pendingPickups = outputs.filter(w => w.status === 'PENDING').length;
 
+  // Handle radio login success
+  const handleRadioLoginSuccess = (station: RadioStation) => {
+    setCurrentRadio(station);
+    setSelectedStationId(station.id);
+    setUserRole('ADMIN');
+    setIsRadioMode(true);
+  };
+
+  // Handle radio logout
+  const handleRadioLogout = () => {
+    localStorage.removeItem('currentRadio');
+    localStorage.removeItem('radioLoginTime');
+    setCurrentRadio(null);
+    setIsRadioMode(false);
+    setUserRole(null);
+    window.location.href = '/';
+  };
+
+  // Radio Mode - Show Login Page
+  if (isRadioMode && !currentRadio && radioSlug) {
+    return <RadioLoginPage slug={radioSlug} onLoginSuccess={handleRadioLoginSuccess} />;
+  }
+
   if (!userRole) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 to-slate-900 flex items-center justify-center p-4">
@@ -1010,7 +1053,7 @@ const App: React.FC = () => {
           <div className="mt-auto">
             <div className="px-4 py-2 mb-2 text-xs text-slate-500 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>Sistema Online</div>
             {(userRole === 'ADMIN' || userRole === 'MASTER') && (
-              <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-red-900/20 hover:text-red-400 transition-colors"><LogOut size={20} /> Sair</button>
+              <button onClick={isRadioMode ? handleRadioLogout : handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-red-900/20 hover:text-red-400 transition-colors"><LogOut size={20} /> Sair</button>
             )}
           </div>
         </nav>
