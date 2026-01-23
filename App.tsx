@@ -11,6 +11,7 @@ import { PhotoUpload } from './components/PhotoUpload';
 import { StationSelector } from './components/StationSelector';
 import { Dashboard } from './components/Dashboard';
 import { ManageStationsModal } from './components/ManageStationsModal';
+import { RadioManagement } from './components/RadioManagement';
 import { getItemPhotos } from './services/photoUpload';
 import { LayoutDashboard, Gift, Users, Radio, ClipboardList, LogOut, X, History, AlertTriangle, Shield, Share2, Lock, RefreshCw, Search, Trophy, PackagePlus, Zap, Copy, ExternalLink, FileText, Database, Settings, Mic2, Gift as GiftIcon, Plus, Warehouse, Edit2 } from 'lucide-react';
 import { ToastContainer, ToastMessage, ToastType } from './components/Toast';
@@ -982,6 +983,7 @@ const App: React.FC = () => {
           {userRole === 'MASTER' && (
             <>
               <button onClick={() => setActiveTab('DASHBOARD')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'DASHBOARD' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><LayoutDashboard size={20} /> Visão Geral</button>
+              <button onClick={() => setActiveTab('OUTPUTS')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'OUTPUTS' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Radio size={20} /> Gerenciar Rádios</button>
               <button onClick={() => setActiveTab('MASTER_INVENTORY')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'MASTER_INVENTORY' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Warehouse size={20} /> Estoque Central</button>
               <div className="pt-4 mt-4 border-t border-slate-800 space-y-2">
                 <button onClick={() => setShareModalOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-teal-400 hover:bg-teal-900/20 transition-colors"><Share2 size={20} /> Compartilhar</button>
@@ -1019,9 +1021,9 @@ const App: React.FC = () => {
           <div className="flex items-center gap-3">
             <div>
               <h2 className="text-2xl font-bold text-gray-800">
-                {userRole === 'OPERATOR' ? 'Prêmios no Ar' : (activeTab === 'DASHBOARD' ? 'Visão Geral' : activeTab === 'INVENTORY' ? 'Controle de Estoque' : activeTab === 'MASTER_INVENTORY' ? 'Estoque Central' : userRole === 'RECEPTION' ? 'Retirada de Prêmios' : 'Histórico de Saídas')}
+                {userRole === 'OPERATOR' ? 'Prêmios no Ar' : (activeTab === 'DASHBOARD' ? 'Visão Geral' : activeTab === 'INVENTORY' ? 'Controle de Estoque' : activeTab === 'MASTER_INVENTORY' ? 'Estoque Central' : activeTab === 'OUTPUTS' && userRole === 'MASTER' ? 'Gerenciamento de Rádios' : userRole === 'RECEPTION' ? 'Retirada de Prêmios' : 'Histórico de Saídas')}
               </h2>
-              <p className="text-gray-500 text-sm">{userRole === 'OPERATOR' ? 'Itens disponíveis para sorteio imediato.' : (activeTab === 'OUTPUTS' && userRole === 'RECEPTION' ? 'Confirme a identidade do ouvinte antes de entregar.' : 'Gerencie o fluxo de prêmios da emissora.')}</p>
+              <p className="text-gray-500 text-sm">{userRole === 'OPERATOR' ? 'Itens disponíveis para sorteio imediato.' : (activeTab === 'OUTPUTS' && userRole === 'RECEPTION' ? 'Confirme a identidade do ouvinte antes de entregar.' : activeTab === 'OUTPUTS' && userRole === 'MASTER' ? 'Configure e gerencie as rádios da sua rede.' : 'Gerencie o fluxo de prêmios da emissora.')}</p>
             </div>
             <button onClick={() => fetchData()} title="Atualizar Dados Agora" className={`p-2 rounded-full hover:bg-gray-200 text-gray-600 transition-all ${loading ? 'animate-spin bg-blue-100 text-blue-600' : ''}`}><RefreshCw size={20} /></button>
           </div>
@@ -1048,7 +1050,8 @@ const App: React.FC = () => {
             )}
           </div>
 
-          {activeTab === 'INVENTORY' && userRole === 'ADMIN' && (
+          {/* Botões removidos do MASTER - operações ficam apenas nas rádios */}
+          {activeTab === 'INVENTORY' && userRole === 'ADMIN' && false && (
             <div className="flex gap-2">
               <button onClick={() => { setEditingPrize(undefined); setFormIsQuickDraw(true); setIsFormOpen(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 shadow-lg shadow-indigo-200 transition-all font-semibold"><Zap size={18} /> Sorteio Rápido (Já no Ar)</button>
               <button onClick={() => { setEditingPrize(undefined); setFormIsQuickDraw(false); setIsFormOpen(true); }} className="bg-white text-blue-600 border border-blue-200 px-4 py-2 rounded-lg hover:bg-blue-50 flex items-center gap-2 transition-all font-semibold"><PackagePlus size={18} /> Cadastrar Estoque</button>
@@ -1084,6 +1087,11 @@ const App: React.FC = () => {
 
             {(activeTab === 'OUTPUTS' || userRole === 'RECEPTION') && (
               <div>
+                {/* MASTER: Radio Management */}
+                {userRole === 'MASTER' && (
+                  <RadioManagement onStationsUpdated={fetchStations} />
+                )}
+
                 {/* Admin: On Air Management Section */}
                 {userRole === 'ADMIN' && (
                   <div className="mb-8 bg-indigo-50 border border-indigo-100 rounded-xl p-6">

@@ -9,6 +9,7 @@ export interface RadioStation {
   slug: string;
   logo_url?: string;
   is_active: boolean;
+  access_pin?: string;
   created_at: string;
   updated_at: string;
 }
