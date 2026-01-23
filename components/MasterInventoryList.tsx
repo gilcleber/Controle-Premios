@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, X, Package, Calendar, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Plus, Search, X, Package, Calendar, AlertTriangle, ArrowRight, Trash2 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import type { MasterInventory, RadioStation } from '../types';
 
@@ -36,6 +36,23 @@ export const MasterInventoryList: React.FC<MasterInventoryListProps> = ({
             console.error('Erro ao buscar itens:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id: string, name: string) => {
+        if (!confirm(`Tem certeza que deseja excluir o item "${name}"? Essa ação não pode ser desfeita.`)) return;
+
+        try {
+            const { error } = await supabase
+                .from('master_inventory')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            fetchItems();
+        } catch (error: any) {
+            alert('Erro ao excluir: ' + error.message);
         }
     };
 
@@ -188,10 +205,10 @@ export const MasterInventoryList: React.FC<MasterInventoryListProps> = ({
                                             {item.validity_date ? (
                                                 <div
                                                     className={`text-sm ${isExpired(item.validity_date)
-                                                            ? 'text-red-600 font-bold'
-                                                            : isExpiringSoon(item.validity_date)
-                                                                ? 'text-orange-600 font-medium'
-                                                                : 'text-gray-600'
+                                                        ? 'text-red-600 font-bold'
+                                                        : isExpiringSoon(item.validity_date)
+                                                            ? 'text-orange-600 font-medium'
+                                                            : 'text-gray-600'
                                                         }`}
                                                 >
                                                     {new Date(item.validity_date).toLocaleDateString()}
@@ -211,6 +228,13 @@ export const MasterInventoryList: React.FC<MasterInventoryListProps> = ({
                                                     title="Ver Fotos"
                                                 >
                                                     📸
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(item.id, item.item_name)}
+                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 size={16} />
                                                 </button>
                                                 <button
                                                     onClick={() => onDistribute(item)}
