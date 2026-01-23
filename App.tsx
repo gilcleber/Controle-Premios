@@ -10,7 +10,7 @@ import { DistributionModal } from './components/DistributionModal';
 import { PhotoUpload } from './components/PhotoUpload';
 import { StationSelector } from './components/StationSelector';
 import { Dashboard } from './components/Dashboard';
-import { EditStationModal } from './components/EditStationModal';
+import { ManageStationsModal } from './components/ManageStationsModal';
 import { getItemPhotos } from './services/photoUpload';
 import { LayoutDashboard, Gift, Users, Radio, ClipboardList, LogOut, X, History, AlertTriangle, Shield, Share2, Lock, RefreshCw, Search, Trophy, PackagePlus, Zap, Copy, ExternalLink, FileText, Database, Settings, Mic2, Gift as GiftIcon, Plus, Warehouse, Edit2 } from 'lucide-react';
 import { ToastContainer, ToastMessage, ToastType } from './components/Toast';
@@ -112,6 +112,14 @@ const App: React.FC = () => {
     // Recarregar dados
     fetchData();
   };
+
+  const handleDashboardStationSelect = (stationId: string) => {
+    handleStationChange(stationId);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    addToast('Visualizando estação selecionada', 'info');
+  };
+
+
 
   // --- Toast State ---
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -1031,9 +1039,9 @@ const App: React.FC = () => {
                   <button
                     onClick={() => setEditStationModalOpen(true)}
                     className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-                    title="Editar Nome da Estação"
+                    title="Gerenciar Estações"
                   >
-                    <Edit2 size={16} />
+                    <Settings size={16} />
                   </button>
                 )}
               </div>
@@ -1059,6 +1067,7 @@ const App: React.FC = () => {
                 userRole={userRole}
                 selectedStationId={selectedStationId}
                 stations={stations}
+                onSelectStation={handleDashboardStationSelect}
               />
             )}
 
@@ -1732,14 +1741,14 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Station Modal */}
-      {editStationModalOpen && selectedStationId && (
-        <EditStationModal
-          station={stations.find(s => s.id === selectedStationId)!}
+      {/* Manage Stations Modal */}
+      {editStationModalOpen && (
+        <ManageStationsModal
+          isOpen={editStationModalOpen}
           onClose={() => setEditStationModalOpen(false)}
-          onSaved={() => {
-            fetchStations(); // Recarregar lista
-            addToast('Nome da estação atualizado!', 'success');
+          onStationsUpdated={() => {
+            fetchStations();
+            addToast('Lista de estações atualizada!', 'success');
           }}
         />
       )}

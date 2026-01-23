@@ -33,8 +33,7 @@ export const EditStationModal: React.FC<EditStationModalProps> = ({
             if (error) throw error;
 
             alert('Estação atualizada com sucesso!');
-            onSaved();
-            window.location.reload(); // Forçar recarregamento para garantir que o nome atualize no topo
+            onSaved(); // Isso deve acionar fetchStations() no pai
             onClose();
         } catch (error: any) {
             alert(`Erro ao atualizar: ${error.message}`);
