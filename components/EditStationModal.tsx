@@ -34,6 +34,7 @@ export const EditStationModal: React.FC<EditStationModalProps> = ({
 
             alert('Estação atualizada com sucesso!');
             onSaved();
+            window.location.reload(); // Forçar recarregamento para garantir que o nome atualize no topo
             onClose();
         } catch (error: any) {
             alert(`Erro ao atualizar: ${error.message}`);
