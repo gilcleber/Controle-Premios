@@ -60,7 +60,7 @@ export const WinnerList: React.FC<OutputListProps> = ({ winners, role, onConfirm
                       </div>
                     </td>
                     <td className="p-4">
-                      <div className="text-sm font-semibold text-gray-800">{output.prizeName}</div>
+                      <div className="text-sm font-semibold text-gray-800">{output.quantity > 1 ? `${output.quantity}x ` : ''}{output.prizeName}</div>
                       <div className="text-xs text-gray-500 bg-gray-100 inline-block px-1.5 py-0.5 rounded mt-1">
                         {output.quantity}x • {output.note || 'Saída Avulsa'}
                       </div>

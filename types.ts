@@ -1,4 +1,59 @@
 
+// ========================================
+// NEW: Multi-Tenant Types
+// ========================================
+
+export interface RadioStation {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MasterInventory {
+  id: string;
+  item_name: string;
+  description?: string;
+  category?: string;
+  supplier?: string;
+  total_quantity: number;
+  available_quantity: number;
+  receipt_date: string;
+  validity_date?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PhotoType = 'receipt' | 'product' | 'package' | 'other';
+
+export interface MasterInventoryPhoto {
+  id: string;
+  master_inventory_id: string;
+  photo_url: string;
+  photo_type?: PhotoType;
+  uploaded_by?: string;
+  uploaded_at: string;
+}
+
+export interface DistributionHistory {
+  id: string;
+  master_inventory_id: string;
+  radio_station_id: string;
+  prize_id?: string;
+  quantity_distributed: number;
+  distributed_by?: string;
+  distributed_at: string;
+  notes?: string;
+}
+
+// ========================================
+// UPDATED: Existing Types
+// ========================================
+
 export interface Prize {
   id: string;
   name: string;
@@ -11,12 +66,19 @@ export interface Prize {
   pickupDeadlineDays: number; // Dias úteis para retirada
   isOnAir?: boolean; // Se true, aparece na tela do locutor
   comboDetails?: { prizeId: string, quantity: number }[]; // Detalhes do combo para evitar duplo débito
+
+  // NEW: Multi-tenant fields
+  radio_station_id?: string; // Estação à qual pertence
+  source_master_id?: string; // Item do estoque central de origem
 }
 
 export interface Program {
   id: string;
   name: string;
   active: boolean;
+
+  // NEW: Multi-tenant field
+  radio_station_id?: string;
 }
 
 export type OutputType = 'DRAW' | 'GIFT'; // Sorteio vs Brinde/Diretoria
@@ -41,8 +103,12 @@ export interface PrizeOutput {
   winnerEmail?: string;
   winnerDoc?: string; // CPF/RG
   winnerAddress?: string;
+
+  // NEW: Multi-tenant field
+  radio_station_id?: string;
 }
 
-export type TabView = 'DASHBOARD' | 'INVENTORY' | 'OUTPUTS' | 'PROGRAMS';
+export type TabView = 'DASHBOARD' | 'INVENTORY' | 'OUTPUTS' | 'PROGRAMS' | 'MASTER_INVENTORY';
 
-export type UserRole = 'ADMIN' | 'OPERATOR' | 'RECEPTION';
+export type UserRole = 'MASTER' | 'ADMIN' | 'OPERATOR' | 'RECEPTION';
+

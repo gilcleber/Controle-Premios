@@ -1,10 +1,18 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from './services/supabase';
-import { Prize, PrizeOutput, TabView, UserRole, Program, OutputType } from './types';
+import { Prize, PrizeOutput, TabView, UserRole, Program, OutputType, MasterInventory, MasterInventoryPhoto, RadioStation } from './types';
 import { PrizeList } from './components/PrizeList';
 import { PrizeForm } from './components/PrizeForm';
 import { WinnerList } from './components/WinnerList';
-import { LayoutDashboard, Gift, Users, Radio, ClipboardList, LogOut, X, History, AlertTriangle, Shield, Share2, Lock, RefreshCw, Search, Trophy, PackagePlus, Zap, Copy, ExternalLink, FileText, Database, Settings, Mic2, Gift as GiftIcon, Plus } from 'lucide-react';
+import { MasterInventoryList } from './components/MasterInventoryList';
+import { MasterItemForm } from './components/MasterItemForm';
+import { DistributionModal } from './components/DistributionModal';
+import { PhotoUpload } from './components/PhotoUpload';
+import { StationSelector } from './components/StationSelector';
+import { Dashboard } from './components/Dashboard';
+import { EditStationModal } from './components/EditStationModal';
+import { getItemPhotos } from './services/photoUpload';
+import { LayoutDashboard, Gift, Users, Radio, ClipboardList, LogOut, X, History, AlertTriangle, Shield, Share2, Lock, RefreshCw, Search, Trophy, PackagePlus, Zap, Copy, ExternalLink, FileText, Database, Settings, Mic2, Gift as GiftIcon, Plus, Warehouse, Edit2 } from 'lucide-react';
 import { ToastContainer, ToastMessage, ToastType } from './components/Toast';
 
 const App: React.FC = () => {
@@ -36,6 +44,9 @@ const App: React.FC = () => {
 
   // Programs State
   const [programs, setPrograms] = useState<Program[]>([]);
+
+  // Stations State (NEW)
+  const [stations, setStations] = useState<RadioStation[]>([]);
 
   // Winner Fields State
   const [winnerName, setWinnerName] = useState('');
@@ -75,6 +86,32 @@ const App: React.FC = () => {
 
   // Loading State
   const [loading, setLoading] = useState(true);
+
+  // --- Master Inventory State (NEW) ---
+  const [masterItemFormOpen, setMasterItemFormOpen] = useState(false);
+  const [distributionModalOpen, setDistributionModalOpen] = useState(false);
+  const [selectedMasterItem, setSelectedMasterItem] = useState<MasterInventory | null>(null);
+  const [viewingPhotos, setViewingPhotos] = useState<{ item: MasterInventory; photos: MasterInventoryPhoto[] } | null>(null);
+
+  // --- Multi-Tenancy State (NEW) ---
+  const [selectedStationId, setSelectedStationId] = useState<string | null>(() => {
+    // Carregar do localStorage
+    return localStorage.getItem('selectedStationId') || null;
+  });
+
+
+  const [editStationModalOpen, setEditStationModalOpen] = useState(false); // NEW
+
+  const handleStationChange = (stationId: string | null) => {
+    setSelectedStationId(stationId);
+    if (stationId) {
+      localStorage.setItem('selectedStationId', stationId);
+    } else {
+      localStorage.removeItem('selectedStationId');
+    }
+    // Recarregar dados
+    fetchData();
+  };
 
   // --- Toast State ---
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -118,13 +155,19 @@ const App: React.FC = () => {
       (output.winnerDoc && output.winnerDoc.includes(q))
     );
   }).filter(output => {
-    // Filtro para Recepção
-    if (userRole === 'RECEPTION') {
+    // General Filter: Hide Combo parts from the list to prevent "duplication" visual
+    if (output.note && output.note.includes('(Combo)')) {
+      return false;
+    }
+
+    // Filtro para Recepção e Admin (Abas de Status)
+    if (userRole === 'RECEPTION' || (userRole === 'ADMIN' && activeTab === 'OUTPUTS')) {
       const deadline = new Date(output.pickupDeadline);
       const now = new Date();
       // Reset time for strict date comparison if needed, but loose comparison is usually fine
       const isExpired = output.status === 'PENDING' && deadline < now;
 
+      // Note: Default 'receptionTab' state is used for both roles now
       if (receptionTab === 'PENDING') {
         return output.status === 'PENDING' && !isExpired;
       }
@@ -141,6 +184,7 @@ const App: React.FC = () => {
         return isExpired && now <= expirationLimit;
       }
     }
+
     return true;
   });
 
@@ -167,19 +211,38 @@ const App: React.FC = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
 
-    const { data: prizesData, error: prizesError } = await supabase.from('prizes').select('*');
+    // Filtros baseados no papel e estação selecionada
+    let prizesQuery = supabase.from('prizes').select('*');
+    let outputsQuery = supabase.from('outputs').select('*');
+
+    // Se uma estação foi selecionada, filtrar por ela
+    // MASTER pode ver todas se selectedStationId = null
+    // ADMIN só vê da estação selecionada
+    if (selectedStationId) {
+      prizesQuery = prizesQuery.eq('radio_station_id', selectedStationId);
+      outputsQuery = outputsQuery.eq('radio_station_id', selectedStationId);
+    }
+
+    const { data: prizesData, error: prizesError } = await prizesQuery;
     if (prizesData) setPrizes(prizesData as Prize[]);
     if (prizesError) console.error("Error fetching prizes:", prizesError);
 
-    const { data: outputsData, error: outputsError } = await supabase.from('outputs').select('*');
+    const { data: outputsData, error: outputsError } = await outputsQuery;
     if (outputsData) setOutputs(outputsData as PrizeOutput[]);
     if (outputsError) console.error("Error fetching outputs:", outputsError);
 
     setLoading(false);
-  }, []);
+  }, [selectedStationId]);
 
   const fetchPrograms = async () => {
-    const { data, error } = await supabase.from('programs').select('*').order('name');
+    let programsQuery = supabase.from('programs').select('*').order('name');
+
+    // Filtrar por estação se selecionada
+    if (selectedStationId) {
+      programsQuery = programsQuery.eq('radio_station_id', selectedStationId);
+    }
+
+    const { data, error } = await programsQuery;
     if (error) {
       console.error('Erro ao buscar programas:', error);
       // Fallback se a tabela não existir ainda
@@ -195,10 +258,23 @@ const App: React.FC = () => {
     }
   };
 
+  const fetchStations = async () => {
+    const { data, error } = await supabase
+      .from('radio_stations')
+      .select('*')
+      .eq('is_active', true)
+      .order('name');
+
+    if (!error && data) {
+      setStations(data);
+    }
+  };
+
   // --- Initialization & Realtime ---
   useEffect(() => {
     fetchData();
     fetchPrograms();
+    fetchStations(); // NEW
 
     const channels = supabase.channel('custom-all-channel')
       .on(
@@ -422,16 +498,16 @@ const App: React.FC = () => {
     }
 
     const today = new Date(outputDate); // Use selected date
-    // Fix timezone issue by setting time to noon or just treating as local date string
-    // Ideally, we just want the date part. new Date('YYYY-MM-DD') creates UTC.
-    // Let's ensure we treat it as local.
+    // Fix timezone issue
     const [year, month, day] = outputDate.split('-').map(Number);
 
-    // Check if selected date is TODAY. If so, use current time.
-    const todayStr = new Date().toLocaleDateString('pt-BR', { year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
-    const isToday = outputDate === todayStr;
+    // Create date object properly.
+    // If user selected "Today", we want the CURRENT TIME.
+    // If not, we set it to noon to avoid timezone rollover.
+    const now = new Date();
+    const isTopicDay = now.getDate() === day && (now.getMonth() + 1) === month && now.getFullYear() === year;
 
-    const dateObj = isToday ? new Date() : new Date(year, month - 1, day, 12, 0, 0); // Noon to avoid timezone shifts for past dates
+    const dateObj = isTopicDay ? new Date() : new Date(year, month - 1, day, 12, 0, 0);
 
     const deadlineDate = addBusinessDays(dateObj, selectedPrizeForOutput.pickupDeadlineDays);
 
@@ -459,14 +535,22 @@ const App: React.FC = () => {
       winnerAddress,
     };
 
-    const { error: insertError } = await supabase.from('outputs').insert(newOutput);
+    const { error: insertError } = await supabase.from('outputs').insert({
+      ...newOutput,
+      radio_station_id: selectedStationId // Multi-tenancy
+    });
     if (insertError) {
       addToast("Erro ao registrar ganhador.", 'error');
       return;
     }
 
     const newQuantity = selectedPrizeForOutput.availableQuantity - outputQuantity;
-    await supabase.from('prizes').update({ availableQuantity: newQuantity }).eq('id', selectedPrizeForOutput.id);
+    // User requested that the prize disappears from Operator view immediately after draw
+    // So we set isOnAir to false.
+    await supabase.from('prizes').update({
+      availableQuantity: newQuantity,
+      isOnAir: false
+    }).eq('id', selectedPrizeForOutput.id);
 
     // 2. Register Additional Prizes (Combos)
     // 2. Register Additional Prizes (Combos)
@@ -482,7 +566,10 @@ const App: React.FC = () => {
           note: `${finalNote} (Combo)`, // Mark as combo
         };
 
-        await supabase.from('outputs').insert(extraOutput);
+        await supabase.from('outputs').insert({
+          ...extraOutput,
+          radio_station_id: selectedStationId // Multi-tenancy
+        });
 
         // Check if this item was already debited as part of the combo package
         const preDebitedItem = selectedPrizeForOutput.comboDetails?.find(
@@ -512,11 +599,22 @@ const App: React.FC = () => {
     if (userRole === 'OPERATOR') return;
 
     if (confirm('Confirmar entrega/retirada destes itens?')) {
-      await supabase.from('outputs').update({
-        status: 'DELIVERED',
-        deliveredDate: new Date().toISOString()
-      }).eq('id', outputId);
-      fetchData();
+      // Find the specific output to get details
+      const targetOutput = outputs.find(o => o.id === outputId);
+
+      if (targetOutput) {
+        // Update ALL items that share the same winner and date (cascading to hidden combo items)
+        const relatedQuery = supabase.from('outputs')
+          .update({
+            status: 'DELIVERED',
+            deliveredDate: new Date().toISOString()
+          })
+          .eq('winnerName', targetOutput.winnerName)
+          .eq('date', targetOutput.date);
+
+        await relatedQuery;
+        fetchData();
+      }
     }
   };
 
@@ -688,7 +786,11 @@ const App: React.FC = () => {
     const name = prompt("Nome do novo programa:");
     if (!name) return;
 
-    const { error } = await supabase.from('programs').insert({ name, active: true });
+    const { error } = await supabase.from('programs').insert({
+      name,
+      active: true,
+      radio_station_id: selectedStationId // Multi-tenancy
+    });
     if (error) {
       addToast("Erro ao criar programa. Verifique se a tabela 'programs' existe.", 'error');
       // Fallback local
@@ -790,7 +892,10 @@ const App: React.FC = () => {
     ];
 
     for (const o of testOutputs) {
-      await supabase.from('outputs').insert(o);
+      await supabase.from('outputs').insert({
+        ...o,
+        radio_station_id: selectedStationId // Multi-tenancy (test data)
+      });
     }
 
     setLoading(false);
@@ -863,9 +968,18 @@ const App: React.FC = () => {
       <aside className="w-full md:w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col">
         <div className="p-6 border-b border-slate-800 flex items-center gap-2">
           <div className="bg-blue-600 p-2 rounded-lg"><Radio size={24} className="text-white" /></div>
-          <div><h1 className="font-bold text-lg leading-tight">RadioPrize</h1><p className="text-xs text-slate-400">{userRole === 'ADMIN' && 'Administrador'}{userRole === 'OPERATOR' && 'Operador / No Ar'}{userRole === 'RECEPTION' && 'Recepção'}</p></div>
+          <div><h1 className="font-bold text-lg leading-tight">RadioPrize</h1><p className="text-xs text-slate-400">{userRole === 'MASTER' && 'Master Central'}{userRole === 'ADMIN' && 'Administrador'}{userRole === 'OPERATOR' && 'Operador / No Ar'}{userRole === 'RECEPTION' && 'Recepção'}</p></div>
         </div>
         <nav className="p-4 space-y-2 flex-1">
+          {userRole === 'MASTER' && (
+            <>
+              <button onClick={() => setActiveTab('DASHBOARD')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'DASHBOARD' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><LayoutDashboard size={20} /> Visão Geral</button>
+              <button onClick={() => setActiveTab('MASTER_INVENTORY')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'MASTER_INVENTORY' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Warehouse size={20} /> Estoque Central</button>
+              <div className="pt-4 mt-4 border-t border-slate-800 space-y-2">
+                <button onClick={() => setShareModalOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-teal-400 hover:bg-teal-900/20 transition-colors"><Share2 size={20} /> Compartilhar</button>
+              </div>
+            </>
+          )}
           {userRole === 'ADMIN' && (
             <>
               <button onClick={() => setActiveTab('DASHBOARD')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'DASHBOARD' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><LayoutDashboard size={20} /> Visão Geral</button>
@@ -874,7 +988,6 @@ const App: React.FC = () => {
               <button onClick={() => setActiveTab('PROGRAMS')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'PROGRAMS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Settings size={20} /> Programas</button>
               <div className="pt-4 mt-4 border-t border-slate-800 space-y-2">
                 <button onClick={() => setShareModalOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-teal-400 hover:bg-teal-900/20 transition-colors"><Share2 size={20} /> Compartilhar</button>
-                <button onClick={handleGenerateTestData} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-purple-400 hover:bg-purple-900/20 transition-colors text-xs"><Database size={16} /> Gerar Dados Teste</button>
               </div>
             </>
           )}
@@ -886,7 +999,7 @@ const App: React.FC = () => {
           )}
           <div className="mt-auto">
             <div className="px-4 py-2 mb-2 text-xs text-slate-500 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>Sistema Online</div>
-            {userRole === 'ADMIN' && (
+            {(userRole === 'ADMIN' || userRole === 'MASTER') && (
               <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-red-900/20 hover:text-red-400 transition-colors"><LogOut size={20} /> Sair</button>
             )}
           </div>
@@ -894,15 +1007,37 @@ const App: React.FC = () => {
       </aside>
 
       <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <header className="mb-8 flex justify-between items-center">
+        <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
             <div>
               <h2 className="text-2xl font-bold text-gray-800">
-                {userRole === 'OPERATOR' ? 'Prêmios no Ar' : (activeTab === 'DASHBOARD' ? 'Visão Geral' : activeTab === 'INVENTORY' ? 'Controle de Estoque' : userRole === 'RECEPTION' ? 'Retirada de Prêmios' : 'Histórico de Saídas')}
+                {userRole === 'OPERATOR' ? 'Prêmios no Ar' : (activeTab === 'DASHBOARD' ? 'Visão Geral' : activeTab === 'INVENTORY' ? 'Controle de Estoque' : activeTab === 'MASTER_INVENTORY' ? 'Estoque Central' : userRole === 'RECEPTION' ? 'Retirada de Prêmios' : 'Histórico de Saídas')}
               </h2>
               <p className="text-gray-500 text-sm">{userRole === 'OPERATOR' ? 'Itens disponíveis para sorteio imediato.' : (activeTab === 'OUTPUTS' && userRole === 'RECEPTION' ? 'Confirme a identidade do ouvinte antes de entregar.' : 'Gerencie o fluxo de prêmios da emissora.')}</p>
             </div>
             <button onClick={() => fetchData()} title="Atualizar Dados Agora" className={`p-2 rounded-full hover:bg-gray-200 text-gray-600 transition-all ${loading ? 'animate-spin bg-blue-100 text-blue-600' : ''}`}><RefreshCw size={20} /></button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Station Selector for MASTER/ADMIN */}
+            {(userRole === 'MASTER' || userRole === 'ADMIN') && activeTab !== 'MASTER_INVENTORY' && (
+              <div className="flex items-center gap-2">
+                <StationSelector
+                  selectedStationId={selectedStationId}
+                  onStationChange={handleStationChange}
+                  userRole={userRole}
+                />
+                {selectedStationId && (
+                  <button
+                    onClick={() => setEditStationModalOpen(true)}
+                    className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                    title="Editar Nome da Estação"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {activeTab === 'INVENTORY' && userRole === 'ADMIN' && (
@@ -917,26 +1052,14 @@ const App: React.FC = () => {
           <div className="flex items-center justify-center h-64"><RefreshCw className="animate-spin text-blue-600" size={32} /></div>
         ) : (
           <>
-            {activeTab === 'DASHBOARD' && userRole === 'ADMIN' && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><div className="flex justify-between items-start"><div><p className="text-sm font-medium text-gray-500">Itens em Estoque</p><h3 className="text-3xl font-bold text-gray-900 mt-2">{totalAvailable}</h3></div><div className="p-3 bg-blue-50 text-blue-600 rounded-lg"><Gift size={24} /></div></div></div>
-                  <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><div className="flex justify-between items-start"><div><p className="text-sm font-medium text-gray-500">Aguardando Retirada</p><h3 className="text-3xl font-bold text-orange-600 mt-2">{pendingPickups}</h3></div><div className="p-3 bg-orange-50 text-orange-600 rounded-lg"><Users size={24} /></div></div></div>
-                  <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><div className="flex justify-between items-start"><div><p className="text-sm font-medium text-gray-500">Total Saídas</p><h3 className="text-3xl font-bold text-green-600 mt-2">{outputs.length}</h3></div><div className="p-3 bg-green-50 text-green-600 rounded-lg"><LogOut size={24} /></div></div></div>
-                </div>
-                <div className="grid grid-cols-1">
-                  <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><AlertTriangle size={18} className="text-orange-500" /> Próximos a Vencer</h3>
-                    {prizes.filter(p => p.availableQuantity > 0).sort((a, b) => new Date(a.maxDrawDate).getTime() - new Date(b.maxDrawDate).getTime()).slice(0, 5).map(p => (
-                      <div key={p.id} className="flex justify-between items-center py-3 border-b border-gray-50 last:border-0">
-                        <div><div className="font-medium text-sm text-gray-800">{p.name}</div><div className="text-xs text-gray-500">Vence: {new Date(p.maxDrawDate).toLocaleDateString()}</div></div>
-                        <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded text-gray-600">{p.availableQuantity} un</span>
-                      </div>
-                    ))}
-                    {prizes.filter(p => p.availableQuantity > 0).length === 0 && <p className="text-sm text-gray-400 italic">Nenhum prêmio próximo do vencimento.</p>}
-                  </div>
-                </div>
-              </div>
+            {(activeTab === 'DASHBOARD' && (userRole === 'ADMIN' || userRole === 'MASTER')) && (
+              <Dashboard
+                prizes={prizes}
+                outputs={outputs}
+                userRole={userRole}
+                selectedStationId={selectedStationId}
+                stations={stations}
+              />
             )}
 
             {(activeTab === 'INVENTORY' || userRole === 'OPERATOR') && (
@@ -1051,6 +1174,25 @@ const App: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* MASTER INVENTORY TAB */}
+            {activeTab === 'MASTER_INVENTORY' && userRole === 'MASTER' && (
+              <MasterInventoryList
+                onAddNew={() => setMasterItemFormOpen(true)}
+                onDistribute={(item) => {
+                  setSelectedMasterItem(item);
+                  setDistributionModalOpen(true);
+                }}
+                onViewPhotos={async (item) => {
+                  try {
+                    const photos = await getItemPhotos(item.id);
+                    setViewingPhotos({ item, photos });
+                  } catch (error) {
+                    console.error('Erro ao carregar fotos:', error);
+                  }
+                }}
+              />
+            )}
           </>
         )}
       </main>
@@ -1073,7 +1215,18 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  {/* QTD Input removed as per user request */}
+                  {/* QTD Input Restored */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Quantidade</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max={selectedPrizeForOutput.availableQuantity}
+                      value={outputQuantity}
+                      onChange={e => setOutputQuantity(Math.max(1, parseInt(e.target.value)))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -1520,6 +1673,75 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* MASTER MODALS */}
+      {masterItemFormOpen && (
+        <MasterItemForm
+          onClose={() => setMasterItemFormOpen(false)}
+          onSaved={() => {
+            addToast('Item cadastrado com sucesso!', 'success');
+            // Forçar reload do componente (ele tem seu próprio fetch)
+          }}
+        />
+      )}
+
+      {distributionModalOpen && selectedMasterItem && (
+        <DistributionModal
+          item={selectedMasterItem}
+          onClose={() => {
+            setDistributionModalOpen(false);
+            setSelectedMasterItem(null);
+          }}
+          onDistributed={() => {
+            addToast('Distribuição realizada com sucesso!', 'success');
+            // Forçar reload
+          }}
+        />
+      )}
+
+      {viewingPhotos && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">Fotos de Auditoria</h3>
+                <p className="text-sm text-gray-600 mt-1">{viewingPhotos.item.item_name}</p>
+              </div>
+              <button onClick={() => setViewingPhotos(null)} className="text-gray-400 hover:text-gray-600">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6">
+              <PhotoUpload
+                masterInventoryId={viewingPhotos.item.id}
+                existingPhotos={viewingPhotos.photos}
+                onPhotoUploaded={async () => {
+                  // Recarregar fotos
+                  const photos = await getItemPhotos(viewingPhotos.item.id);
+                  setViewingPhotos({ ...viewingPhotos, photos });
+                }}
+                onPhotoDeleted={async () => {
+                  // Recarregar fotos
+                  const photos = await getItemPhotos(viewingPhotos.item.id);
+                  setViewingPhotos({ ...viewingPhotos, photos });
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Station Modal */}
+      {editStationModalOpen && selectedStationId && (
+        <EditStationModal
+          station={stations.find(s => s.id === selectedStationId)!}
+          onClose={() => setEditStationModalOpen(false)}
+          onSaved={() => {
+            fetchStations(); // Recarregar lista
+            addToast('Nome da estação atualizado!', 'success');
+          }}
+        />
       )}
 
       <ToastContainer toasts={toasts} removeToast={removeToast} />
