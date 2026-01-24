@@ -1130,7 +1130,13 @@ const App: React.FC = () => {
                 outputs={outputs}
                 userRole={userRole}
                 selectedStationId={selectedStationId}
-                stations={stations}
+                stations={
+                  (isRadioMode && currentRadio)
+                    ? [currentRadio]
+                    : (selectedStationId
+                      ? stations.filter(s => s.id === selectedStationId)
+                      : stations)
+                }
                 onOpenPerformance={() => setPerformanceModalOpen(true)}
               />
             )}
