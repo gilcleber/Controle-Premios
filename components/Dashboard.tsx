@@ -11,6 +11,7 @@ interface DashboardProps {
     userRole: UserRole | null;
     selectedStationId: string | null;
     stations?: RadioStation[];
+    onOpenPerformance?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -18,7 +19,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     outputs,
     userRole,
     selectedStationId,
-    stations = []
+    stations = [],
+    onOpenPerformance
 }) => {
     // Cálculos de Estatísticas
     const totalPrizes = prizes.reduce((acc, curr) => acc + curr.totalQuantity, 0);
@@ -231,7 +233,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 )}
                             </div>
 
-                            <button className="mt-6 w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-sm transition-all shadow-lg shadow-blue-900/50">
+                            <button
+                                onClick={onOpenPerformance}
+                                className="mt-6 w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-sm transition-all shadow-lg shadow-blue-900/50"
+                            >
                                 Ver Relatório Completo
                             </button>
                         </div>

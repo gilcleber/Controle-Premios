@@ -13,6 +13,8 @@ import { Dashboard } from './components/Dashboard';
 import { ManageStationsModal } from './components/ManageStationsModal';
 import { RadioManagement } from './components/RadioManagement';
 import { RadioLoginPage } from './components/RadioLoginPage';
+import { PerformanceModal } from './components/PerformanceModal';
+import { CreateRadioModal } from './components/CreateRadioModal';
 import { getItemPhotos } from './services/photoUpload';
 import { LayoutDashboard, Gift, Users, Radio, ClipboardList, LogOut, X, History, AlertTriangle, Shield, Share2, Lock, RefreshCw, Search, Trophy, PackagePlus, Zap, Copy, ExternalLink, FileText, Database, Settings, Mic2, Gift as GiftIcon, Plus, Warehouse, Edit2 } from 'lucide-react';
 import { ToastContainer, ToastMessage, ToastType } from './components/Toast';
@@ -113,7 +115,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const radioParam = params.get('radio');
-    
+
     if (radioParam) {
       setRadioSlug(radioParam);
       setIsRadioMode(true);
@@ -121,7 +123,9 @@ const App: React.FC = () => {
   }, []);
 
 
-  const [editStationModalOpen, setEditStationModalOpen] = useState(false); // NEW
+  const [editStationModalOpen, setEditStationModalOpen] = useState(false);
+  const [performanceModalOpen, setPerformanceModalOpen] = useState(false);
+  const [createRadioModalOpen, setCreateRadioModalOpen] = useState(false);
 
   const handleStationChange = (stationId: string | null) => {
     setSelectedStationId(stationId);
