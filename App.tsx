@@ -1148,7 +1148,17 @@ const App: React.FC = () => {
                   <input type="text" placeholder="Buscar prêmio no estoque..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-800 placeholder-gray-400" />
                   {searchQuery && <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600 p-1"><X size={16} /></button>}
                 </div>
-                <PrizeList prizes={filteredPrizes} role={userRole} onDelete={handleDeletePrize} onEdit={handleEditPrize} onDraw={openOutputModal} onGenerateScript={handleGenerateScript} onToggleOnAir={handleToggleOnAir} />
+                <PrizeList
+                  prizes={filteredPrizes}
+                  role={userRole}
+                  onDelete={handleDeletePrize}
+                  onEdit={handleEditPrize}
+                  onDraw={openOutputModal}
+                  onGenerateScript={handleGenerateScript}
+                  onToggleOnAir={handleToggleOnAir}
+                  stations={stations}
+                  showStationName={!selectedStationId && !isRadioMode}
+                />
               </div>
             )}
 

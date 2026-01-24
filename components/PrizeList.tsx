@@ -10,10 +10,12 @@ interface PrizeListProps {
   onDelete: (id: string) => void;
   onDraw: (prize: Prize) => void;
   onGenerateScript: (prize: Prize) => void;
-  onToggleOnAir?: (prize: Prize) => void; // Nova função para alternar status
+  onToggleOnAir?: (prize: Prize) => void;
+  stations?: any[]; // Lista de estações para lookup
+  showStationName?: boolean; // Flag para mostrar coluna
 }
 
-export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDelete, onDraw, onGenerateScript, onToggleOnAir }) => {
+export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDelete, onDraw, onGenerateScript, onToggleOnAir, stations = [], showStationName = false }) => {
   const isExpired = (dateString: string) => {
     return new Date(dateString) < new Date();
   };
@@ -23,6 +25,9 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
 
   // --- Operator View: CARDS ONLY (Filtered by isOnAir) ---
   if (isOperator) {
+    // ... (omitted for brevity, keep existing logic if possible by using replace chunk carefully)
+    // Actually, I can keep the same logic. Let's start replacement from line 24 if I want to skip imports, but interface changed.
+    // I will replace the whole top part.
     const availablePrizes = prizes.filter(p => {
       const expiredDraw = isExpired(p.maxDrawDate);
       const expiredValidity = isExpired(p.validityDate);
@@ -44,6 +49,15 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
             <div key={prize.id} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all transform hover:-translate-y-1">
               <div className="h-2 bg-indigo-500 w-full animate-pulse"></div>
               <div className="p-6">
+                {/* Operator Header - Show Station if needed */}
+                {showStationName && (
+                  <div className="mb-2">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-500 bg-indigo-50 px-2 py-1 rounded-full">
+                      {stations?.find(s => s.id === prize.radio_station_id)?.name}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex justify-between items-start mb-4">
                   <div className="bg-indigo-50 text-indigo-700 p-2 rounded-lg">
                     <Gift size={24} />
@@ -88,6 +102,7 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold">
               <th className="p-4">No Ar?</th>
+              {showStationName && <th className="p-4">Emissora</th>}
               <th className="p-4">Prêmio</th>
               <th className="p-4 text-center">Estoque</th>
               <th className="p-4">Datas Críticas</th>
@@ -97,7 +112,7 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
           <tbody className="divide-y divide-gray-100">
             {prizes.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-gray-500">
+                <td colSpan={showStationName ? 6 : 5} className="p-8 text-center text-gray-500">
                   Nenhum prêmio cadastrado.
                 </td>
               </tr>
@@ -121,6 +136,13 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
                         </button>
                       )}
                     </td>
+                    {showStationName && (
+                      <td className="p-4">
+                        <span className="inline-block bg-white border border-gray-200 text-gray-700 text-xs px-2 py-1 rounded shadow-sm font-medium">
+                          {stations?.find(s => s.id === prize.radio_station_id)?.name || 'N/A'}
+                        </span>
+                      </td>
+                    )}
                     <td className="p-4">
                       <div className="font-semibold text-gray-900">{prize.name}</div>
                       <div className="text-sm text-gray-500 line-clamp-1">{prize.description}</div>
