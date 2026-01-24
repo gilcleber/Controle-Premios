@@ -108,19 +108,14 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('currentRadio');
     return saved ? JSON.parse(saved) : null;
   });
-  const [isRadioMode, setIsRadioMode] = useState(false);
-  const [radioSlug, setRadioSlug] = useState<string | null>(null);
-
-  // Check for radio mode on mount
-  useEffect(() => {
+  const [isRadioMode, setIsRadioMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    const radioParam = params.get('radio');
-
-    if (radioParam) {
-      setRadioSlug(radioParam);
-      setIsRadioMode(true);
-    }
-  }, []);
+    return !!params.get('radio');
+  });
+  const [radioSlug, setRadioSlug] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('radio');
+  });
 
 
   const [editStationModalOpen, setEditStationModalOpen] = useState(false);
