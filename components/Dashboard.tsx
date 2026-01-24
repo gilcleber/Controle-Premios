@@ -217,8 +217,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 <div className="inline-flex items-center justify-center p-3 rounded-full bg-white/10 mb-4 backdrop-blur-sm">
                                     <Radio size={24} className="text-blue-400" />
                                 </div>
-                                <h3 className="text-xl font-bold">Performance da Rede</h3>
-                                <p className="text-slate-400 text-sm mt-1">Status das estações ativas</p>
+                                <h3 className="text-xl font-bold">
+                                    {stations && stations.length === 1 ? `Performance: ${stations[0].name}` : 'Performance da Rede'}
+                                </h3>
+                                <p className="text-slate-400 text-sm mt-1">
+                                    {stations && stations.length === 1 ? 'Status da estação' : 'Status das estações ativas'}
+                                </p>
                             </div>
 
                             <div className="space-y-4">

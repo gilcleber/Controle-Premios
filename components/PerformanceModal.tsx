@@ -47,8 +47,12 @@ export const PerformanceModal: React.FC<PerformanceModalProps> = ({
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
                     <div className="flex justify-between items-center">
                         <div>
-                            <h2 className="text-2xl font-bold mb-1">Performance da Rede</h2>
-                            <p className="text-indigo-100">Análise detalhada de todas as estações</p>
+                            <h2 className="text-2xl font-bold mb-1">
+                                {stations.length === 1 ? `Performance: ${stations[0].name}` : 'Performance da Rede'}
+                            </h2>
+                            <p className="text-indigo-100">
+                                {stations.length === 1 ? 'Análise detalhada da estação' : 'Análise detalhada de todas as estações'}
+                            </p>
                         </div>
                         <button
                             onClick={onClose}

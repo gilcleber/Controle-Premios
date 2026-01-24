@@ -1835,7 +1835,11 @@ const App: React.FC = () => {
       <PerformanceModal
         isOpen={performanceModalOpen}
         onClose={() => setPerformanceModalOpen(false)}
-        stations={stations}
+        stations={(isRadioMode && currentRadio)
+          ? [currentRadio]
+          : (selectedStationId
+            ? stations.filter(s => s.id === selectedStationId)
+            : stations)}
         prizes={prizes}
         outputs={outputs}
       />
