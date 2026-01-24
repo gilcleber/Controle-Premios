@@ -47,6 +47,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     return (
         <div className="space-y-8 animate-fade-in">
+            {/* Debug Role: {userRole} */}
             {/* Header Section */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 p-8 text-white shadow-2xl">
                 <div className="relative z-10">
