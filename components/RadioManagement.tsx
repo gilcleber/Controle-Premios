@@ -5,6 +5,7 @@ import type { RadioStation } from '../types';
 
 interface RadioManagementProps {
     onStationsUpdated: () => void;
+    onCreateNew?: () => void;
 }
 
 export const RadioManagement: React.FC<RadioManagementProps> = ({ onStationsUpdated }) => {

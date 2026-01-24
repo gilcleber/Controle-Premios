@@ -1117,7 +1117,7 @@ const App: React.FC = () => {
                 userRole={userRole}
                 selectedStationId={selectedStationId}
                 stations={stations}
-                onSelectStation={handleDashboardStationSelect}
+                onOpenPerformance={() => setPerformanceModalOpen(true)}
               />
             )}
 
@@ -1136,7 +1136,10 @@ const App: React.FC = () => {
               <div>
                 {/* MASTER: Radio Management */}
                 {userRole === 'MASTER' && (
-                  <RadioManagement onStationsUpdated={fetchStations} />
+                  <RadioManagement
+                    onStationsUpdated={fetchStations}
+                    onCreateNew={() => setCreateRadioModalOpen(true)}
+                  />
                 )}
 
                 {/* Admin: On Air Management Section */}
@@ -1807,6 +1810,26 @@ const App: React.FC = () => {
           }}
         />
       )}
+
+      {/* Performance Modal */}
+      <PerformanceModal
+        isOpen={performanceModalOpen}
+        onClose={() => setPerformanceModalOpen(false)}
+        stations={stations}
+        prizes={prizes}
+        outputs={outputs}
+      />
+
+      {/* Create Radio Modal */}
+      <CreateRadioModal
+        isOpen={createRadioModalOpen}
+        onClose={() => setCreateRadioModalOpen(false)}
+        onCreated={() => {
+          fetchStations();
+          setCreateRadioModalOpen(false);
+          addToast('Rádio criada com sucesso!', 'success');
+        }}
+      />
 
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div >
