@@ -248,12 +248,19 @@ const App: React.FC = () => {
     let prizesQuery = supabase.from('prizes').select('*');
     let outputsQuery = supabase.from('outputs').select('*');
 
-    // Se uma estação foi selecionada, filtrar por ela
-    // MASTER pode ver todas se selectedStationId = null
-    // ADMIN só vê da estação selecionada
-    if (selectedStationId) {
-      prizesQuery = prizesQuery.eq('radio_station_id', selectedStationId);
-      outputsQuery = outputsQuery.eq('radio_station_id', selectedStationId);
+    // ISOLAMENTO TOTAL: Se estiver em modo rádio, filtrar OBRIGATORIAMENTE pela rádio atual
+    const filterStationId = (isRadioMode && currentRadio) ? currentRadio.id : selectedStationId;
+
+    if (filterStationId) {
+      prizesQuery = prizesQuery.eq('radio_station_id', filterStationId);
+      outputsQuery = outputsQuery.eq('radio_station_id', filterStationId);
+    } else if (userRole === 'ADMIN' && !isRadioMode) {
+      // Se for admin e não tiver estação selecionada (não deveria acontecer), não mostre nada para segurança
+      // Exceto se for MASTER que pode ver tudo
+      if (userRole !== 'MASTER') {
+        prizesQuery = prizesQuery.limit(0);
+        outputsQuery = outputsQuery.limit(0);
+      }
     }
 
     const { data: prizesData, error: prizesError } = await prizesQuery;
@@ -265,14 +272,16 @@ const App: React.FC = () => {
     if (outputsError) console.error("Error fetching outputs:", outputsError);
 
     setLoading(false);
-  }, [selectedStationId]);
+  }, [selectedStationId, isRadioMode, currentRadio, userRole]);
 
   const fetchPrograms = async () => {
     let programsQuery = supabase.from('programs').select('*').order('name');
 
-    // Filtrar por estação se selecionada
-    if (selectedStationId) {
-      programsQuery = programsQuery.eq('radio_station_id', selectedStationId);
+    // Filtrar por estação se selecionada (ou forçada por modo rádio)
+    const filterStationId = (isRadioMode && currentRadio) ? currentRadio.id : selectedStationId;
+
+    if (filterStationId) {
+      programsQuery = programsQuery.eq('radio_station_id', filterStationId);
     }
 
     const { data, error } = await programsQuery;
