@@ -13,7 +13,8 @@ interface PrizeFormProps {
 }
 
 export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, role, prizes = [], onSave, onCancel, forceOnAir = false }) => {
-  const isMaster = role === 'MASTER';
+  // Oculta campos avançados (prazos/no-ar) se for MASTER ou ADMIN (Cadastro Simplificado)
+  const isMaster = role === 'MASTER' || role === 'ADMIN';
   const [formData, setFormData] = useState<Partial<Prize>>({
     name: '',
     description: '',
