@@ -1098,12 +1098,22 @@ const App: React.FC = () => {
                   onStationChange={handleStationChange}
                   userRole={userRole}
                 />
-                {/* Settings Button - Always visible for MASTER */}
-                {(userRole === 'MASTER' || (userRole === 'ADMIN' && selectedStationId)) && (
+                {/* Settings Button - Always visible for MASTER and ADMIN */}
+                {(userRole === 'MASTER' || userRole === 'ADMIN') && (
                   <button
-                    onClick={() => selectedStationId ? setEditStationModalOpen(true) : setActiveTab('OUTPUTS')}
+                    onClick={() => {
+                      if (selectedStationId) {
+                        setEditStationModalOpen(true);
+                      } else {
+                        // Se não tiver estação selecionada (Visão Global):
+                        // Master -> Aba de Gerenciar Rádios
+                        // Admin -> Modal de Compartilhar (Links)
+                        if (userRole === 'MASTER') setActiveTab('OUTPUTS');
+                        else setShareModalOpen(true);
+                      }
+                    }}
                     className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-                    title={selectedStationId ? "Editar Estação" : "Gerenciar Rádios e Links"}
+                    title={selectedStationId ? "Editar Estação" : "Gerenciar/Links"}
                   >
                     <Settings size={16} />
                   </button>
