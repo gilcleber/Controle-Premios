@@ -974,7 +974,7 @@ const App: React.FC = () => {
   };
 
   // Radio Mode - Show Login Page
-  if (isRadioMode && !currentRadio && radioSlug) {
+  if (isRadioMode && !userRole && radioSlug) {
     return <RadioLoginPage slug={radioSlug} onLoginSuccess={handleRadioLoginSuccess} />;
   }
 
