@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Prize } from '../types';
+import { Prize, UserRole } from '../types';
 
 import { Sparkles, Loader2, Save, X, Radio, Plus, Edit2, PackagePlus } from 'lucide-react';
 

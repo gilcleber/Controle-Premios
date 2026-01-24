@@ -1284,7 +1284,7 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {isFormOpen && userRole === 'ADMIN' && <PrizeForm initialData={editingPrize} prizes={prizes} onSave={handleSavePrize} onCancel={() => { setIsFormOpen(false); setEditingPrize(undefined); }} forceOnAir={formIsQuickDraw} />}
+      {isFormOpen && (userRole === 'ADMIN' || userRole === 'MASTER') && <PrizeForm role={userRole || 'OPERATOR'} initialData={editingPrize} prizes={prizes} onSave={handleSavePrize} onCancel={() => { setIsFormOpen(false); setEditingPrize(undefined); }} forceOnAir={formIsQuickDraw} />}
 
       {
         outputModalOpen && selectedPrizeForOutput && (
