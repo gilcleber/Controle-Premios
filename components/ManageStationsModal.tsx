@@ -152,14 +152,22 @@ export const ManageStationsModal: React.FC<ManageStationsModalProps> = ({
 
     const copyAccessInfo = async (station: RadioStation) => {
         const link = `https://gilcleber.github.io/Controle-Premios/?radio=${station.slug}`;
-        const text = `📻 ${station.name}\n\n🔗 Link: ${link}\n🔐 PIN: ${station.access_pin}`;
 
         try {
-            await navigator.clipboard.writeText(text);
+            await navigator.clipboard.writeText(link);
             setCopiedId(station.id);
             setTimeout(() => setCopiedId(null), 2000);
         } catch (error) {
-            alert(text);
+            alert(link);
+        }
+    };
+
+    const copyPin = async (station: RadioStation) => {
+        try {
+            await navigator.clipboard.writeText(station.access_pin || '');
+            alert('PIN copiado!');
+        } catch (error) {
+            alert(station.access_pin);
         }
     };
 
@@ -318,9 +326,16 @@ export const ManageStationsModal: React.FC<ManageStationsModalProps> = ({
                                                     <button
                                                         onClick={() => copyAccessInfo(station)}
                                                         className={`p-2 rounded-lg ${copiedId === station.id ? 'bg-green-100 text-green-600' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}
-                                                        title="Copiar Link + PIN"
+                                                        title="Copiar Link de Acesso"
                                                     >
                                                         {copiedId === station.id ? <Check size={18} /> : <Copy size={18} />}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => copyPin(station)}
+                                                        className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                                                        title="Copiar PIN"
+                                                    >
+                                                        <Key size={18} />
                                                     </button>
                                                     <button onClick={() => startEditing(station)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
                                                         <Edit2 size={18} />

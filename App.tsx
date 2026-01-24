@@ -173,7 +173,21 @@ const App: React.FC = () => {
   };
 
   const getShareLink = (role: string) => {
-    return `${window.location.protocol}//${window.location.host}${window.location.pathname}?role=${role}`;
+    let url = `${window.location.protocol}//${window.location.host}${window.location.pathname}?role=${role}`;
+
+    // Para Locutor/Operador, adicionar o slug da rádio para garantir isolamento
+    if (role === 'OPERATOR') {
+      if (isRadioMode && currentRadio) {
+        url += `&radio=${currentRadio.slug}`;
+      } else if (selectedStationId) {
+        const station = stations.find(s => s.id === selectedStationId);
+        if (station) {
+          url += `&radio=${station.slug}`;
+        }
+      }
+    }
+
+    return url;
   };
 
   // --- Filter Logic ---

@@ -208,7 +208,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {/* Right Column - Desempenho por Estação (Only Master) or Quick Actions (Admin) */}
                 <div className="space-y-6">
                     {/* Master View - Stations Breakdown */}
-                    {(userRole === 'MASTER' || userRole === 'ADMIN') && (
+                    {/* Master View - Stations Breakdown */}
+                    {(userRole === 'MASTER') && (
                         <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-xl p-6 text-white text-center">
                             <div className="mb-6">
                                 <div className="inline-flex items-center justify-center p-3 rounded-full bg-white/10 mb-4 backdrop-blur-sm">
