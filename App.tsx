@@ -263,13 +263,6 @@ const App: React.FC = () => {
     if (filterStationId) {
       prizesQuery = prizesQuery.eq('radio_station_id', filterStationId);
       outputsQuery = outputsQuery.eq('radio_station_id', filterStationId);
-    } else if (userRole === 'ADMIN' && !isRadioMode) {
-      // Se for admin e não tiver estação selecionada (não deveria acontecer), não mostre nada para segurança
-      // Exceto se for MASTER que pode ver tudo
-      if (userRole !== 'MASTER') {
-        prizesQuery = prizesQuery.limit(0);
-        outputsQuery = outputsQuery.limit(0);
-      }
     }
 
     const { data: prizesData, error: prizesError } = await prizesQuery;
@@ -1044,7 +1037,7 @@ const App: React.FC = () => {
           <div className="bg-blue-600 p-2 rounded-lg"><Radio size={24} className="text-white" /></div>
           <div>
             <h1 className="font-bold text-lg leading-tight">
-              {(isRadioMode && currentRadio) ? currentRadio.name : 'RadioPrize'}
+              {(isRadioMode && currentRadio) ? currentRadio.name : (selectedStationId ? (stations.find(s => s.id === selectedStationId)?.name || 'RadioPrize') : 'RadioPrize')}
             </h1>
             <p className="text-xs text-slate-400">{userRole === 'MASTER' && 'Master Central'}{userRole === 'ADMIN' && 'Administrador'}{userRole === 'OPERATOR' && 'Operador / No Ar'}{userRole === 'RECEPTION' && 'Recepção'}</p></div>
         </div>
