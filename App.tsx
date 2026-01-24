@@ -15,6 +15,7 @@ import { RadioManagement } from './components/RadioManagement';
 import { RadioLoginPage } from './components/RadioLoginPage';
 import { PerformanceModal } from './components/PerformanceModal';
 import { CreateRadioModal } from './components/CreateRadioModal';
+import { SortlyInventory } from './components/SortlyInventory';
 import { getItemPhotos } from './services/photoUpload';
 import { LayoutDashboard, Gift, Users, Radio, ClipboardList, LogOut, X, History, AlertTriangle, Shield, Share2, Lock, RefreshCw, Search, Trophy, PackagePlus, Zap, Copy, ExternalLink, FileText, Database, Settings, Mic2, Gift as GiftIcon, Plus, Warehouse, Edit2 } from 'lucide-react';
 import { ToastContainer, ToastMessage, ToastType } from './components/Toast';
@@ -1144,21 +1145,12 @@ const App: React.FC = () => {
 
             {(activeTab === 'INVENTORY' || userRole === 'OPERATOR') && (
               <div>
-                <div className="mb-4 flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm max-w-md">
-                  <Search size={20} className="text-gray-400 ml-2" />
-                  <input type="text" placeholder="Buscar prêmio no estoque..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-800 placeholder-gray-400" />
-                  {searchQuery && <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600 p-1"><X size={16} /></button>}
-                </div>
-                <PrizeList
+                <SortlyInventory
                   prizes={filteredPrizes}
-                  role={userRole}
+                  stations={stations}
                   onDelete={handleDeletePrize}
                   onEdit={handleEditPrize}
-                  onDraw={openOutputModal}
-                  onGenerateScript={handleGenerateScript}
-                  onToggleOnAir={handleToggleOnAir}
-                  stations={stations}
-                  showStationName={!selectedStationId && !isRadioMode}
+                  onAddNew={() => { setEditingPrize(undefined); setFormIsQuickDraw(false); setIsFormOpen(true); }}
                 />
               </div>
             )}
