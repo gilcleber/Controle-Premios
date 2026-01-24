@@ -53,32 +53,57 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
         setDistributing(true);
 
         try {
-            // 1. Criar prêmio na estação destino
-            const { data: prizeData, error: prizeError } = await supabase
+            // 1. Verificar se esse prêmio já existe na estação (vindo do mesmo master_id)
+            const { data: existingPrize } = await supabase
                 .from('prizes')
-                .insert({
-                    name: item.item_name,
-                    description: item.description || '',
-                    totalQuantity: quantity,
-                    availableQuantity: quantity,
-                    entryDate: new Date().toISOString(),
-                    validityDate: item.validity_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-                    maxDrawDate: item.validity_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-                    pickupDeadlineDays: 3,
-                    isOnAir: false,
-                    radio_station_id: selectedStation,
-                    source_master_id: item.id,
-                })
-                .select()
+                .select('*')
+                .eq('radio_station_id', selectedStation)
+                .eq('source_master_id', item.id)
                 .single();
 
-            if (prizeError) throw prizeError;
+            let prizeId;
+
+            if (existingPrize) {
+                // UPDATE: Somar quantidade
+                const { error: updatePrizeError } = await supabase
+                    .from('prizes')
+                    .update({
+                        totalQuantity: existingPrize.totalQuantity + quantity,
+                        availableQuantity: existingPrize.availableQuantity + quantity,
+                    })
+                    .eq('id', existingPrize.id);
+
+                if (updatePrizeError) throw updatePrizeError;
+                prizeId = existingPrize.id;
+            } else {
+                // INSERT: Criar novo prêmio
+                const { data: newPrize, error: insertError } = await supabase
+                    .from('prizes')
+                    .insert({
+                        name: item.item_name,
+                        description: item.description || '',
+                        totalQuantity: quantity,
+                        availableQuantity: quantity,
+                        entryDate: new Date().toISOString(),
+                        validityDate: item.validity_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                        maxDrawDate: item.validity_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                        pickupDeadlineDays: 3,
+                        isOnAir: false,
+                        radio_station_id: selectedStation,
+                        source_master_id: item.id,
+                    })
+                    .select()
+                    .single();
+
+                if (insertError) throw insertError;
+                prizeId = newPrize.id;
+            }
 
             // 2. Registrar distribuição no histórico
             const { error: historyError } = await supabase.from('distribution_history').insert({
                 master_inventory_id: item.id,
                 radio_station_id: selectedStation,
-                prize_id: prizeData.id,
+                prize_id: prizeId,
                 quantity_distributed: quantity,
                 notes: notes,
             });
@@ -99,6 +124,7 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
             onDistributed();
             onClose();
         } catch (error: any) {
+            console.error(error);
             alert(`Erro ao distribuir: ${error.message}`);
         } finally {
             setDistributing(false);

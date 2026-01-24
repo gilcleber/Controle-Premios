@@ -1032,9 +1032,7 @@ const App: React.FC = () => {
               <button onClick={() => setActiveTab('DASHBOARD')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'DASHBOARD' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><LayoutDashboard size={20} /> Visão Geral</button>
               <button onClick={() => setActiveTab('OUTPUTS')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'OUTPUTS' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Radio size={20} /> Gerenciar Rádios</button>
               <button onClick={() => setActiveTab('MASTER_INVENTORY')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'MASTER_INVENTORY' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><Warehouse size={20} /> Estoque Central</button>
-              <div className="pt-4 mt-4 border-t border-slate-800 space-y-2">
-                <button onClick={() => setShareModalOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-teal-400 hover:bg-teal-900/20 transition-colors"><Share2 size={20} /> Compartilhar</button>
-              </div>
+
             </>
           )}
           {userRole === 'ADMIN' && (
