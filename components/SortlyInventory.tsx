@@ -35,101 +35,83 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
     return (
         <div className="flex bg-gray-50 h-full min-h-[600px] rounded-xl overflow-hidden shadow-sm border border-gray-100 font-sans">
             {/* Sidebar Filters (Sortly Style) */}
-            <div className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex">
-                <div className="p-4 border-b border-gray-100 flex items-center gap-2">
-                    <Filter size={16} className="text-gray-400" />
-                    <span className="font-bold text-gray-700">Filters</span>
+            <div className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex shrink-0">
+                <div className="p-4 flex items-center gap-2">
+                    <span className="font-bold text-gray-800 text-lg">All Items</span>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                    {/* Folder Filter (Stations) */}
-                    <div>
+                <div className="flex-1 overflow-y-auto px-3 space-y-1">
+                    {/* Folder Tree */}
+                    <div className="space-y-0.5">
                         <button
-                            onClick={() => setFoldersExpanded(!foldersExpanded)}
-                            className="w-full flex items-center justify-between p-2 text-sm text-gray-600 hover:bg-gray-50 rounded transition-colors"
+                            className="w-full text-left text-sm px-3 py-2 rounded-lg bg-red-50 text-red-700 font-medium flex items-center gap-3 border border-red-100"
                         >
-                            <span className="font-semibold flex items-center gap-2">
-                                {foldersExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                Folders (Stations)
-                            </span>
+                            <Folder size={18} className="fill-red-200" /> All Inventory
                         </button>
 
-                        {foldersExpanded && (
-                            <div className="ml-4 pl-2 border-l border-gray-100 mt-1 space-y-1">
-                                <button className="w-full text-left text-xs px-2 py-1.5 rounded text-blue-600 bg-blue-50 font-medium flex items-center gap-2">
-                                    <Folder size={12} /> All Folders
+                        <div className="pl-4 pt-1 space-y-0.5">
+                            {stations.map(s => (
+                                <button key={s.id} className="w-full text-left text-sm px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 flex items-center gap-3 transition-colors group">
+                                    <Folder size={16} className="text-gray-400 group-hover:text-gray-500 fill-gray-100" />
+                                    <span className="truncate">{s.name}</span>
                                 </button>
-                                {stations.map(s => (
-                                    <button key={s.id} className="w-full text-left text-xs px-2 py-1.5 rounded text-gray-600 hover:bg-gray-50 flex items-center gap-2 truncate">
-                                        <Folder size={12} className="text-gray-400" /> {s.name}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                            ))}
+                        </div>
                     </div>
 
-                    {/* Status Filter */}
-                    <div className="mt-4">
-                        <button
-                            onClick={() => setStatusExpanded(!statusExpanded)}
-                            className="w-full flex items-center justify-between p-2 text-sm text-gray-600 hover:bg-gray-50 rounded transition-colors"
-                        >
-                            <span className="font-semibold flex items-center gap-2">
-                                {statusExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                Status
-                            </span>
-                        </button>
-
-                        {statusExpanded && (
-                            <div className="ml-6 mt-1 space-y-1">
-                                <label className="flex items-center gap-2 text-xs text-gray-600 p-1 cursor-pointer">
-                                    <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" />
-                                    Low Stock
-                                </label>
-                                <label className="flex items-center gap-2 text-xs text-gray-600 p-1 cursor-pointer">
-                                    <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" />
-                                    No Air (Active)
-                                </label>
-                                <label className="flex items-center gap-2 text-xs text-gray-600 p-1 cursor-pointer">
-                                    <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" />
-                                    Expired
-                                </label>
-                            </div>
-                        )}
+                    {/* Tags Section Mock */}
+                    <div className="mt-6 pt-4 border-t border-gray-100">
+                        <p className="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Tags</p>
+                        <div className="space-y-1">
+                            <label className="flex items-center gap-2 text-sm text-gray-600 px-3 py-1 cursor-pointer hover:bg-gray-50 rounded">
+                                <div className="w-3 h-3 rounded-full bg-green-500"></div> Low Stock
+                            </label>
+                            <label className="flex items-center gap-2 text-sm text-gray-600 px-3 py-1 cursor-pointer hover:bg-gray-50 rounded">
+                                <div className="w-3 h-3 rounded-full bg-blue-500"></div> New Items
+                            </label>
+                            <label className="flex items-center gap-2 text-sm text-gray-600 px-3 py-1 cursor-pointer hover:bg-gray-50 rounded">
+                                <div className="w-3 h-3 rounded-full bg-orange-500"></div> Expired
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col bg-slate-50">
+            <div className="flex-1 flex flex-col bg-white">
                 {/* Header Toolbar */}
-                <div className="bg-white p-4 border-b border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
-                    <div className="flex items-center gap-4 w-full md:w-auto">
-                        <h2 className="text-xl font-bold text-slate-800">All Items</h2>
-                        <div className="relative flex-1 md:w-64">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <div className="bg-white px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center sticky top-0 z-10">
+                    <div className="flex items-center gap-4 w-full md:w-auto flex-1">
+                        <div className="relative w-full max-w-xl">
+                            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
-                                placeholder="Search all items..."
+                                placeholder="Search folders, items, tags..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 bg-gray-100 border-none rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                                className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border-none rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:bg-white transition-all placeholder-gray-500"
                             />
                         </div>
+                        <button className="p-2 text-gray-400 hover:text-gray-600 bg-gray-100 rounded-lg">
+                            <Sliders size={18} />
+                        </button>
                     </div>
 
                     <div className="flex items-center gap-3">
-                        {/* View Toggles */}
-                        <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                        <div className="hidden md:flex items-center text-sm text-gray-500 mr-2 bg-gray-50 px-3 py-1 rounded-md border border-gray-100">
+                            Sort by: <span className="font-semibold text-gray-700 ml-1">Name</span>
+                        </div>
+
+                        <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
                             <button
                                 onClick={() => setViewMode('grid')}
-                                className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-white shadow text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                                className={`p-2 rounded-md ${viewMode === 'grid' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-400 hover:text-gray-600'}`}
                             >
                                 <LayoutGrid size={18} />
                             </button>
                             <button
                                 onClick={() => setViewMode('list')}
-                                className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-white shadow text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                                className={`p-2 rounded-md ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-400 hover:text-gray-600'}`}
                             >
                                 <List size={18} />
                             </button>
@@ -137,54 +119,59 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
 
                         <button
                             onClick={onAddNew}
-                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold shadow-md shadow-red-200 flex items-center gap-2 transition-all transform hover:scale-105"
+                            className="bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-lg font-bold shadow-sm flex items-center gap-2 transition-all"
                         >
-                            <Plus size={18} /> ADD ITEM
+                            <Plus size={18} /> ADD NEW
                         </button>
                     </div>
                 </div>
 
-                {/* Summary Bar */}
-                <div className="px-6 py-3 flex gap-6 text-xs font-medium text-gray-500 border-b border-gray-200 bg-white/50 backdrop-blur-sm">
-                    <span>Items: <strong className="text-gray-800">{filteredPrizes.length}</strong></span>
-                    <span>Total Quantity: <strong className="text-gray-800">{totalQuantity} units</strong></span>
-                    {/* <span>Total Value: <strong className="text-gray-800">R$ --</strong></span> */}
+                {/* KPI Bar */}
+                <div className="px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-8">
+                    <div>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Total Quantity</p>
+                        <p className="text-3xl font-bold text-gray-800">{totalQuantity} <span className="text-sm font-normal text-gray-500">units</span></p>
+                    </div>
+                    <div>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Total Value</p>
+                        <p className="text-3xl font-bold text-gray-800">$ -- <span className="text-sm font-normal text-gray-500">estimated</span></p>
+                    </div>
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 overflow-y-auto px-6 pb-6">
                     {viewMode === 'grid' ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {filteredPrizes.map(prize => (
-                                <div key={prize.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group cursor-pointer" onClick={() => onEdit(prize)}>
-                                    {/* Image Placeholder (Sortly style big image) */}
-                                    <div className="h-40 bg-gray-100 flex items-center justify-center relative overflow-hidden">
-                                        <Package size={48} className="text-gray-300 group-hover:scale-110 transition-transform duration-500" />
+                                <div key={prize.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all group cursor-pointer hover:-translate-y-1" onClick={() => onEdit(prize)}>
+                                    {/* Image Placeholder */}
+                                    <div className="h-48 bg-gray-50 flex items-center justify-center relative overflow-hidden border-b border-gray-100">
+                                        <Package size={56} className="text-gray-300 group-hover:scale-110 transition-transform duration-500 group-hover:text-red-200" />
 
                                         {/* Status Badges */}
-                                        <div className="absolute top-2 left-2 flex flex-col gap-1">
+                                        <div className="absolute top-3 left-3 flex flex-col gap-1">
                                             {prize.isOnAir && (
-                                                <span className="bg-green-500/90 text-white text-[10px] px-2 py-0.5 rounded-full font-bold backdrop-blur-sm">ON AIR</span>
+                                                <span className="bg-green-500 text-white text-[10px] px-2 py-0.5 rounded shadow-sm font-bold tracking-wide">ON AIR</span>
                                             )}
                                             {prize.availableQuantity === 0 && (
-                                                <span className="bg-red-500/90 text-white text-[10px] px-2 py-0.5 rounded-full font-bold backdrop-blur-sm">OUT</span>
+                                                <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded shadow-sm font-bold tracking-wide">OUT</span>
                                             )}
                                         </div>
                                     </div>
 
                                     <div className="p-4">
                                         <h3 className="font-bold text-gray-800 text-lg mb-1 truncate" title={prize.name}>{prize.name}</h3>
-                                        <p className="text-xs text-gray-500 mb-3 line-clamp-2 min-h-[2.5em]">{prize.description || 'No description'}</p>
 
-                                        <div className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center justify-between mt-3">
                                             <div className="flex flex-col">
-                                                <span className="text-xs text-gray-400 uppercase font-semibold">Quantity</span>
+                                                <span className="text-xs text-gray-400 uppercase font-bold tracking-wider">Quantity</span>
                                                 <span className={`font-bold text-xl ${prize.availableQuantity > 0 ? 'text-gray-800' : 'text-red-500'}`}>
                                                     {prize.availableQuantity}
                                                 </span>
                                             </div>
                                             <div className="flex flex-col items-end">
-                                                <span className={`text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 font-medium`}>
+                                                <span className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-0.5">Location</span>
+                                                <span className={`text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 font-medium truncate max-w-[100px]`}>
                                                     {stations.find(s => s.id === prize.radio_station_id)?.name || 'General'}
                                                 </span>
                                             </div>
@@ -195,29 +182,43 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                         </div>
                     ) : (
                         // List View implementation (Table simplified)
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                             <table className="w-full text-left">
-                                <thead className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500">
+                                <thead className="bg-gray-50 border-b border-gray-200 text-xs uppercase text-gray-500 font-bold tracking-wider">
                                     <tr>
-                                        <th className="p-4">Item</th>
-                                        <th className="p-4">Folder</th>
-                                        <th className="p-4 text-center">Qty</th>
+                                        <th className="p-4 pl-6">Item Name</th>
+                                        <th className="p-4">Folder / Location</th>
+                                        <th className="p-4 text-center">Quantity</th>
                                         <th className="p-4">Status</th>
-                                        <th className="p-4 text-right">Actions</th>
+                                        <th className="p-4 text-right pr-6">Value</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {filteredPrizes.map(prize => (
-                                        <tr key={prize.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => onEdit(prize)}>
-                                            <td className="p-4 font-medium text-gray-800">{prize.name}</td>
-                                            <td className="p-4 text-gray-600 text-sm">{stations.find(s => s.id === prize.radio_station_id)?.name}</td>
+                                        <tr key={prize.id} className="hover:bg-red-50/10 cursor-pointer transition-colors" onClick={() => onEdit(prize)}>
+                                            <td className="p-4 pl-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-400">
+                                                        <Package size={16} />
+                                                    </div>
+                                                    <span className="font-semibold text-gray-800">{prize.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-gray-600 text-sm flex items-center gap-2">
+                                                <Folder size={14} className="text-gray-300" />
+                                                {stations.find(s => s.id === prize.radio_station_id)?.name || 'General'}
+                                            </td>
                                             <td className="p-4 text-center font-bold text-gray-700">{prize.availableQuantity}</td>
                                             <td className="p-4">
-                                                {prize.isOnAir ? <span className="text-green-600 text-xs font-bold">ON AIR</span> : <span className="text-gray-400 text-xs">OFF</span>}
+                                                {prize.isOnAir ?
+                                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Active
+                                                    </span>
+                                                    :
+                                                    <span className="text-gray-400 text-xs">Inactive</span>
+                                                }
                                             </td>
-                                            <td className="p-4 text-right">
-                                                <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
-                                            </td>
+                                            <td className="p-4 text-right pr-6 text-gray-400 text-sm">--</td>
                                         </tr>
                                     ))}
                                 </tbody>
