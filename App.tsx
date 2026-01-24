@@ -1047,7 +1047,11 @@ const App: React.FC = () => {
       <aside className="w-full md:w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col">
         <div className="p-6 border-b border-slate-800 flex items-center gap-2">
           <div className="bg-blue-600 p-2 rounded-lg"><Radio size={24} className="text-white" /></div>
-          <div><h1 className="font-bold text-lg leading-tight">RadioPrize</h1><p className="text-xs text-slate-400">{userRole === 'MASTER' && 'Master Central'}{userRole === 'ADMIN' && 'Administrador'}{userRole === 'OPERATOR' && 'Operador / No Ar'}{userRole === 'RECEPTION' && 'Recepção'}</p></div>
+          <div>
+            <h1 className="font-bold text-lg leading-tight">
+              {(isRadioMode && currentRadio) ? currentRadio.name : 'RadioPrize'}
+            </h1>
+            <p className="text-xs text-slate-400">{userRole === 'MASTER' && 'Master Central'}{userRole === 'ADMIN' && 'Administrador'}{userRole === 'OPERATOR' && 'Operador / No Ar'}{userRole === 'RECEPTION' && 'Recepção'}</p></div>
         </div>
         <nav className="p-4 space-y-2 flex-1">
           {userRole === 'MASTER' && (
@@ -1097,13 +1101,6 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Radio Mode - Show fixed station name */}
-            {isRadioMode && currentRadio && (
-              <div className="flex items-center gap-2 bg-indigo-100 text-indigo-800 px-4 py-2 rounded-full">
-                <Radio size={16} />
-                <span className="font-bold">{currentRadio.name}</span>
-              </div>
-            )}
 
             {/* Station Selector for MASTER/ADMIN - Hidden in radio mode */}
             {!isRadioMode && (userRole === 'MASTER' || userRole === 'ADMIN') && activeTab !== 'MASTER_INVENTORY' && (
