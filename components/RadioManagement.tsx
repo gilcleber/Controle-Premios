@@ -8,7 +8,7 @@ interface RadioManagementProps {
     onCreateNew?: () => void;
 }
 
-export const RadioManagement: React.FC<RadioManagementProps> = ({ onStationsUpdated }) => {
+export const RadioManagement: React.FC<RadioManagementProps> = ({ onStationsUpdated, onCreateNew }) => {
     const [stations, setStations] = useState<RadioStation[]>([]);
     const [loading, setLoading] = useState(true);
     const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -66,7 +66,7 @@ export const RadioManagement: React.FC<RadioManagementProps> = ({ onStationsUpda
                         </p>
                     </div>
                     <button
-                        onClick={() => {/* TODO: abrir modal criar rádio */ }}
+                        onClick={onCreateNew}
                         className="bg-white text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50 flex items-center gap-2 font-bold transition-all shadow-lg"
                     >
                         <Plus size={18} />
