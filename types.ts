@@ -71,6 +71,7 @@ export interface Prize {
   // NEW: Multi-tenant fields
   radio_station_id?: string; // Estação à qual pertence
   source_master_id?: string; // Item do estoque central de origem
+  photo_url?: string; // Foto do Item (Base64 ou URL)
 }
 
 export interface Program {
