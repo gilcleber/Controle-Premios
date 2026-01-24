@@ -56,6 +56,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </h1>
                     <p className="text-blue-100 text-lg opacity-90 max-w-2xl">
                         Visão geral dinâmica das operações da <span className="font-bold text-white">{currentStationName}</span>.
+                        <span className="opacity-50 text-xs ml-2 border border-white/20 px-2 py-1 rounded">Role: {userRole}</span>
                     </p>
                 </div>
 
@@ -210,7 +211,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div className="space-y-6">
                     {/* Master View - Stations Breakdown */}
                     {/* Master View - Stations Breakdown */}
-                    {(userRole === 'MASTER') && (
+                    {/* Master View - Stations Breakdown - DEBUG: Visible for ADMIN too temporarily to check render issues */}
+                    {(userRole === 'MASTER' || userRole === 'ADMIN') && (
                         <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-xl p-6 text-white text-center">
                             <div className="mb-6">
                                 <div className="inline-flex items-center justify-center p-3 rounded-full bg-white/10 mb-4 backdrop-blur-sm">

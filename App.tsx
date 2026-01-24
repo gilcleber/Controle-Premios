@@ -1098,11 +1098,12 @@ const App: React.FC = () => {
                   onStationChange={handleStationChange}
                   userRole={userRole}
                 />
-                {selectedStationId && (
+                {/* Settings Button - Always visible for MASTER */}
+                {(userRole === 'MASTER' || (userRole === 'ADMIN' && selectedStationId)) && (
                   <button
-                    onClick={() => setEditStationModalOpen(true)}
+                    onClick={() => selectedStationId ? setEditStationModalOpen(true) : setActiveTab('OUTPUTS')}
                     className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-                    title="Gerenciar Estações"
+                    title={selectedStationId ? "Editar Estação" : "Gerenciar Rádios e Links"}
                   >
                     <Settings size={16} />
                   </button>
