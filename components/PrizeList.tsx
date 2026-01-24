@@ -178,7 +178,9 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {!showStationName && (
+                        {/* Operações de Rádio (Sorteio/Roteiro) - Apenas para Operador/Recepção ou se estiver em modo rádio e não for gestão global */}
+                        {/* Usuário solicitou remoção do Master/Admin pois "é da rádio" */}
+                        {(role !== 'MASTER' && role !== 'ADMIN') && (
                           <>
                             <button
                               onClick={() => onGenerateScript(prize)}
