@@ -1,0 +1,10 @@
+  // Check for radio mode on mount (query params for GitHub Pages)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const radioParam = params.get('radio');
+    
+    if (radioParam) {
+      setRadioSlug(radioParam);
+      setIsRadioMode(true);
+    }
+  }, []);
