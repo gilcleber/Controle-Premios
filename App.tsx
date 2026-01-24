@@ -639,26 +639,27 @@ const App: React.FC = () => {
     if (userRole === 'ADMIN') setActiveTab('OUTPUTS');
   };
 
-  const handleConfirmPickup = async (outputId: string) => {
+  const handleConfirmPickup = async (outputId: string, photo?: string) => {
     if (userRole === 'OPERATOR') return;
 
-    if (confirm('Confirmar entrega/retirada destes itens?')) {
-      // Find the specific output to get details
-      const targetOutput = outputs.find(o => o.id === outputId);
+    // Confirm dialog is handled by PickupModal now
+    // Find the specific output to get details
+    const targetOutput = outputs.find(o => o.id === outputId);
 
-      if (targetOutput) {
-        // Update ALL items that share the same winner and date (cascading to hidden combo items)
-        const relatedQuery = supabase.from('outputs')
-          .update({
-            status: 'DELIVERED',
-            deliveredDate: new Date().toISOString()
-          })
-          .eq('winnerName', targetOutput.winnerName)
-          .eq('date', targetOutput.date);
+    if (targetOutput) {
+      // Update ALL items that share the same winner and date (cascading to hidden combo items)
+      const relatedQuery = supabase.from('outputs')
+        .update({
+          status: 'DELIVERED',
+          deliveredDate: new Date().toISOString(),
+          audit_photo: photo || null // Save photo
+        })
+        .eq('winnerName', targetOutput.winnerName)
+        .eq('date', targetOutput.date);
 
-        await relatedQuery;
-        fetchData();
-      }
+      await relatedQuery;
+      fetchData();
+      addToast('Entrega confirmada com sucesso!', 'success');
     }
   };
 
