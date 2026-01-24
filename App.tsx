@@ -1111,10 +1111,10 @@ const App: React.FC = () => {
             )}
           </div>
 
-          {/* Botões removidos do MASTER - operações ficam apenas nas rádios */}
-          {activeTab === 'INVENTORY' && userRole === 'ADMIN' && false && (
+          {/* Botões reativados para Cadastro Geral */}
+          {activeTab === 'INVENTORY' && (userRole === 'ADMIN' || userRole === 'MASTER') && (
             <div className="flex gap-2">
-              <button onClick={() => { setEditingPrize(undefined); setFormIsQuickDraw(true); setIsFormOpen(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 shadow-lg shadow-indigo-200 transition-all font-semibold"><Zap size={18} /> Sorteio Rápido (Já no Ar)</button>
+              <button onClick={() => { setEditingPrize(undefined); setFormIsQuickDraw(true); setIsFormOpen(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 shadow-lg shadow-indigo-200 transition-all font-semibold"><Zap size={18} /> Sorteio Rápido</button>
               <button onClick={() => { setEditingPrize(undefined); setFormIsQuickDraw(false); setIsFormOpen(true); }} className="bg-white text-blue-600 border border-blue-200 px-4 py-2 rounded-lg hover:bg-blue-50 flex items-center gap-2 transition-all font-semibold"><PackagePlus size={18} /> Cadastrar Estoque</button>
             </div>
           )}
