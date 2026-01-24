@@ -151,8 +151,8 @@ export const ManageStationsModal: React.FC<ManageStationsModalProps> = ({
     };
 
     const copyAccessInfo = async (station: RadioStation) => {
-        const link = `${window.location.origin}${window.location.pathname}?radio=${station.slug}`;
-        const text = `🎙️ ACESSO ${station.name}\n\nLink: ${link}\nPIN: ${station.access_pin}\n\n⚠️ Confidencial!`;
+        const link = `https://gilcleber.github.io/Controle-Premios/?radio=${station.slug}`;
+        const text = `📻 ${station.name}\n\n🔗 Link: ${link}\n🔐 PIN: ${station.access_pin}`;
 
         try {
             await navigator.clipboard.writeText(text);

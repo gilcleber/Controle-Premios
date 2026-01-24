@@ -1076,8 +1076,16 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Station Selector for MASTER/ADMIN */}
-            {(userRole === 'MASTER' || userRole === 'ADMIN') && activeTab !== 'MASTER_INVENTORY' && (
+            {/* Radio Mode - Show fixed station name */}
+            {isRadioMode && currentRadio && (
+              <div className="flex items-center gap-2 bg-indigo-100 text-indigo-800 px-4 py-2 rounded-full">
+                <Radio size={16} />
+                <span className="font-bold">{currentRadio.name}</span>
+              </div>
+            )}
+
+            {/* Station Selector for MASTER/ADMIN - Hidden in radio mode */}
+            {!isRadioMode && (userRole === 'MASTER' || userRole === 'ADMIN') && activeTab !== 'MASTER_INVENTORY' && (
               <div className="flex items-center gap-2">
                 <StationSelector
                   selectedStationId={selectedStationId}
