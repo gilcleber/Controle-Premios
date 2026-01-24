@@ -111,11 +111,11 @@ const App: React.FC = () => {
 
   // Check for radio mode on mount
   useEffect(() => {
-    const path = window.location.pathname;
-    const radioMatch = path.match(/^\/radio\/([^\/]+)/);
-
-    if (radioMatch) {
-      setRadioSlug(radioMatch[1]);
+    const params = new URLSearchParams(window.location.search);
+    const radioParam = params.get('radio');
+    
+    if (radioParam) {
+      setRadioSlug(radioParam);
       setIsRadioMode(true);
     }
   }, []);
@@ -1810,3 +1810,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+
