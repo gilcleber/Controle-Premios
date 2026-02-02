@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Prize } from '../types';
+import { Prize, UserRole } from '../types';
 import { Search, Filter, Grid, List, Plus, Folder, Package, Sliders, ChevronDown, ChevronRight, LayoutGrid, MoreVertical, Edit3, Trash2, Send } from 'lucide-react';
 import { DistributionModal } from './DistributionModal';
 
@@ -10,9 +10,10 @@ interface SortlyInventoryProps {
     onDelete: (id: string) => void;
     onAddNew: () => void;
     onDataChange?: () => void;
+    userRole?: UserRole | null;
 }
 
-export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, stations, onEdit, onDelete, onAddNew, onDataChange }) => {
+export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, stations, onEdit, onDelete, onAddNew, onDataChange, userRole }) => {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [searchQuery, setSearchQuery] = useState('');
     const [activeStationId, setActiveStationId] = useState<string | null>(null);
@@ -72,49 +73,51 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
     return (
         <div className="flex bg-gray-50/50 h-full min-h-[600px] rounded-xl overflow-hidden shadow-sm border border-gray-200 font-sans">
             {/* Sidebar Filters (Premium Style) */}
-            <div className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex shrink-0">
-                <div className="p-5 border-b border-gray-100">
-                    <h2 className="font-bold text-gray-800 text-lg tracking-tight">Categorias</h2>
-                    <p className="text-xs text-gray-400 mt-1">Gerencie seu estoque por origem</p>
-                </div>
+            {userRole !== 'OPERATOR' && (
+                <div className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex shrink-0">
+                    <div className="p-5 border-b border-gray-100">
+                        <h2 className="font-bold text-gray-800 text-lg tracking-tight">Categorias</h2>
+                        <p className="text-xs text-gray-400 mt-1">Gerencie seu estoque por origem</p>
+                    </div>
 
-                <div className="flex-1 overflow-y-auto p-3 space-y-1">
-                    <button
-                        onClick={() => { setActiveStationId(null); setActiveQuickFilter('ALL'); }}
-                        className={`w-full text-left text-sm px-3 py-2.5 rounded-lg font-medium flex items-center gap-3 transition-all ${!activeStationId ? 'bg-gray-900 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
-                    >
-                        <LayoutGrid size={18} className={!activeStationId ? "text-gray-300" : "text-gray-400"} />
-                        Todos os Itens
-                    </button>
+                    <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                        <button
+                            onClick={() => { setActiveStationId(null); setActiveQuickFilter('ALL'); }}
+                            className={`w-full text-left text-sm px-3 py-2.5 rounded-lg font-medium flex items-center gap-3 transition-all ${!activeStationId ? 'bg-gray-900 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+                        >
+                            <LayoutGrid size={18} className={!activeStationId ? "text-gray-300" : "text-gray-400"} />
+                            Todos os Itens
+                        </button>
 
-                    <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Estoques</div>
+                        <div className="pt-4 pb-2 px-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Estoques</div>
 
-                    <button
-                        onClick={() => { setActiveStationId('GENERAL'); setActiveQuickFilter('ALL'); }}
-                        className={`w-full text-left text-sm px-3 py-2.5 rounded-lg font-medium flex items-center gap-3 transition-all ${activeStationId === 'GENERAL' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}
-                    >
-                        <Folder size={18} className={activeStationId === 'GENERAL' ? "fill-indigo-200 text-indigo-600" : "fill-gray-100 text-gray-400"} />
-                        <span>Estoque Geral</span>
-                        {/* Count Badge Example */}
-                        <span className="ml-auto text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md font-bold">
-                            {prizes.filter(p => !p.radio_station_id).length}
-                        </span>
-                    </button>
+                        <button
+                            onClick={() => { setActiveStationId('GENERAL'); setActiveQuickFilter('ALL'); }}
+                            className={`w-full text-left text-sm px-3 py-2.5 rounded-lg font-medium flex items-center gap-3 transition-all ${activeStationId === 'GENERAL' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}
+                        >
+                            <Folder size={18} className={activeStationId === 'GENERAL' ? "fill-indigo-200 text-indigo-600" : "fill-gray-100 text-gray-400"} />
+                            <span>Estoque Geral</span>
+                            {/* Count Badge Example */}
+                            <span className="ml-auto text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md font-bold">
+                                {prizes.filter(p => !p.radio_station_id).length}
+                            </span>
+                        </button>
 
-                    <div className="space-y-0.5 pt-1">
-                        {stations.map(s => (
-                            <button
-                                key={s.id}
-                                onClick={() => setActiveStationId(s.id)}
-                                className={`w-full text-left text-sm px-3 py-2.5 rounded-lg flex items-center gap-3 transition-all ${activeStationId === s.id ? 'bg-blue-50 text-blue-700 font-medium shadow-sm border border-blue-100' : 'text-gray-600 hover:bg-gray-50'}`}
-                            >
-                                <Folder size={16} className={`${activeStationId === s.id ? 'text-blue-500 fill-blue-200' : 'text-gray-400 fill-gray-100'}`} />
-                                <span className="truncate">{s.name}</span>
-                            </button>
-                        ))}
+                        <div className="space-y-0.5 pt-1">
+                            {stations.map(s => (
+                                <button
+                                    key={s.id}
+                                    onClick={() => setActiveStationId(s.id)}
+                                    className={`w-full text-left text-sm px-3 py-2.5 rounded-lg flex items-center gap-3 transition-all ${activeStationId === s.id ? 'bg-blue-50 text-blue-700 font-medium shadow-sm border border-blue-100' : 'text-gray-600 hover:bg-gray-50'}`}
+                                >
+                                    <Folder size={16} className={`${activeStationId === s.id ? 'text-blue-500 fill-blue-200' : 'text-gray-400 fill-gray-100'}`} />
+                                    <span className="truncate">{s.name}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col bg-gray-50/30">
@@ -144,8 +147,8 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                                     key={filter.id}
                                     onClick={() => setActiveQuickFilter(filter.id as any)}
                                     className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeQuickFilter === filter.id
-                                            ? 'bg-gray-900 text-white border-gray-900 shadow-md'
-                                            : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                                        ? 'bg-gray-900 text-white border-gray-900 shadow-md'
+                                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
                                         }`}
                                 >
                                     {filter.label}

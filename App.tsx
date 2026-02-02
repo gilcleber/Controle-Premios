@@ -1150,6 +1150,7 @@ const App: React.FC = () => {
                   onEdit={handleEditPrize}
                   onAddNew={() => { setEditingPrize(undefined); setFormIsQuickDraw(false); setIsFormOpen(true); }}
                   onDataChange={fetchData}
+                  userRole={userRole}
                 />
               </div>
             )}
@@ -1772,7 +1773,7 @@ const App: React.FC = () => {
           onClose={() => setMasterItemFormOpen(false)}
           onSaved={() => {
             addToast('Item cadastrado com sucesso!', 'success');
-            fetchPrizes();
+            fetchData();
           }}
         />
       )}
