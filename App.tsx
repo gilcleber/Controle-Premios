@@ -1404,10 +1404,10 @@ const App: React.FC = () => {
                         if (!outputDate) return "--/--/----";
                         const [y, m, d] = outputDate.split('-').map(Number);
                         const dateObj = new Date(y, m - 1, d);
-                        return addBusinessDays(dateObj, selectedPrizeForOutput.pickupDeadlineDays).toLocaleDateString();
+                        return addBusinessDays(dateObj, 3).toLocaleDateString(); // FIXED: Force 3 business days
                       })()}
                     </span>
-                    <span className="text-[10px] text-gray-400">({selectedPrizeForOutput.pickupDeadlineDays} dias úteis)</span>
+                    <span className="text-[10px] text-gray-400">(3 dias úteis)</span>
                   </div>
                 </div>
 

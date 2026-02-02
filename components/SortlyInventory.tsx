@@ -218,7 +218,7 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                             <Package size={48} className="mb-4 opacity-20" />
                             <p className="text-lg font-medium text-gray-500">Nenhum item encontrado</p>
                             <button onClick={() => { setActiveStationId(null); setActiveQuickFilter('ALL'); setSearchQuery(''); }} className="mt-2 text-blue-600 hover:underline text-sm font-medium">Limpar Filtros</button>
-                            <span className="mt-4 text-[10px] bg-gray-100 text-gray-400 px-2 py-1 rounded-full">System v2.3</span>
+                            <span className="mt-4 text-[10px] bg-gray-100 text-gray-400 px-2 py-1 rounded-full">System v2.4</span>
                         </div>
                     ) : (
                         viewMode === 'grid' ? (
@@ -254,11 +254,25 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                                             <div className="flex justify-between items-start mb-2">
                                                 <h3 className="font-bold text-gray-800 text-lg leading-tight truncate flex-1" title={prize.name}>{prize.name}</h3>
                                             </div>
-                                            <p className="text-sm text-gray-500 line-clamp-2 mb-4 h-10">{prize.description || 'Sem descrição.'}</p>
+
+                                            {/* LOCUTION SCRIPT for Operator */}
+                                            <div className="mb-3 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
+                                                <p className="text-[10px] uppercase font-bold text-indigo-400 mb-0.5">Locução (No Ar):</p>
+                                                <p className="text-sm font-bold text-indigo-900 leading-tight">
+                                                    "Valendo {prize.availableQuantity} {prize.name}
+                                                    {prize.comboDetails && prize.comboDetails.length > 0 && (
+                                                        <span>
+                                                            {prize.comboDetails.map(d => ` + ${d.quantity} ${d.name || 'Item Extra'}`).join('')}
+                                                        </span>
+                                                    )}"
+                                                </p>
+                                            </div>
+
+                                            <p className="text-xs text-gray-400 line-clamp-2 mb-4 h-8">{prize.description || 'Sem descrição.'}</p>
 
                                             <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                                                 <div className="flex-1">
-                                                    <p className="text-xs text-gray-400 font-bold uppercase">Quantidade</p>
+                                                    <p className="text-xs text-gray-400 font-bold uppercase">Disponível</p>
                                                     <p className="text-lg font-bold text-gray-900">{prize.availableQuantity}</p>
                                                 </div>
 
@@ -267,13 +281,8 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                                                     {prize.comboDetails && prize.comboDetails.length > 0 && (
                                                         <div className="hidden sm:flex flex-col items-end mr-2">
                                                             <span className="text-[10px] font-bold text-indigo-600 uppercase flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 mb-1">
-                                                                <Plus size={8} /> Item Extra
+                                                                <Plus size={8} /> Pacote
                                                             </span>
-                                                            {prize.comboDetails.map((detail, idx) => (
-                                                                <span key={idx} className="text-xs font-medium text-gray-600 truncate max-w-[100px]" title={detail.name}>
-                                                                    + {detail.quantity} {detail.name}
-                                                                </span>
-                                                            ))}
                                                         </div>
                                                     )}
 
