@@ -77,6 +77,16 @@ export const WinnerList: React.FC<OutputListProps> = ({ winners, role, onConfirm
                         <div className="text-xs text-gray-500 bg-gray-100 inline-block px-1.5 py-0.5 rounded mt-1">
                           {output.quantity}x • {output.note || 'Saída Avulsa'}
                         </div>
+                        {/* COMBO DETAILS */}
+                        {output.comboDetails && output.comboDetails.length > 0 && (
+                          <div className="mt-1 flex flex-col gap-1 items-start">
+                            {output.comboDetails.map((d, idx) => (
+                              <span key={idx} className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 whitespace-nowrap">
+                                + {d.quantity} {d.name || 'Item Extra'}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td className="p-4">
                         <div className="space-y-1">
@@ -203,7 +213,8 @@ export const WinnerList: React.FC<OutputListProps> = ({ winners, role, onConfirm
           winnerName={confirmingOutput.winnerName}
           prizeName={confirmingOutput.prizeName}
         />
-      )}
+      )
+      }
     </>
   );
 };
