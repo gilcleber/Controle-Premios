@@ -151,7 +151,9 @@ export const ManageStationsModal: React.FC<ManageStationsModalProps> = ({
     };
 
     const copyAccessInfo = async (station: RadioStation) => {
-        const link = `https://gilcleber.github.io/Controle-Premios/?radio=${station.slug}`;
+        // Usa a URL atual do navegador (funciona no Vercel e no GitHub Pages)
+        const baseUrl = window.location.origin + window.location.pathname;
+        const link = `${baseUrl}?radio=${station.slug}`;
 
         try {
             await navigator.clipboard.writeText(link);
