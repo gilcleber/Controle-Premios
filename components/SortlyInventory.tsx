@@ -14,9 +14,10 @@ interface SortlyInventoryProps {
     onDraw?: (prize: Prize) => void;
     userRole?: UserRole | null;
     showSidebar?: boolean;
+    allPrizes?: Prize[]; // NEW: To lookup names for combos if missing
 }
 
-export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, stations, onEdit, onDelete, onAddNew, onDataChange, onToggleOnAir, onDraw, userRole, showSidebar = true }) => {
+export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, stations, onEdit, onDelete, onAddNew, onDataChange, onToggleOnAir, onDraw, userRole, showSidebar = true, allPrizes }) => {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [searchQuery, setSearchQuery] = useState('');
     const [activeStationId, setActiveStationId] = useState<string | null>(null);
@@ -218,7 +219,7 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                             <Package size={48} className="mb-4 opacity-20" />
                             <p className="text-lg font-medium text-gray-500">Nenhum item encontrado</p>
                             <button onClick={() => { setActiveStationId(null); setActiveQuickFilter('ALL'); setSearchQuery(''); }} className="mt-2 text-blue-600 hover:underline text-sm font-medium">Limpar Filtros</button>
-                            <span className="mt-4 text-[10px] bg-gray-100 text-gray-400 px-2 py-1 rounded-full">System v2.4</span>
+                            <span className="mt-4 text-[10px] bg-gray-100 text-gray-400 px-2 py-1 rounded-full">System v2.5</span>
                         </div>
                     ) : (
                         viewMode === 'grid' ? (
@@ -262,7 +263,11 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                                                     "Valendo {prize.availableQuantity} {prize.name}
                                                     {prize.comboDetails && prize.comboDetails.length > 0 && (
                                                         <span>
-                                                            {prize.comboDetails.map(d => ` + ${d.quantity} ${d.name || 'Item Extra'}`).join('')}
+                                                            {prize.comboDetails.map(d => {
+                                                                // LOOKUP NAME if missing
+                                                                const resolvedName = d.name || (allPrizes || prizes).find(p => p.id === d.prizeId)?.name || 'Item Extra';
+                                                                return ` + ${d.quantity} ${resolvedName}`;
+                                                            }).join('')}
                                                         </span>
                                                     )}"
                                                 </p>
