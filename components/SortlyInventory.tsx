@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Prize, UserRole } from '../types';
-import { Search, Filter, Grid, List, Plus, Folder, Package, Sliders, ChevronDown, ChevronRight, LayoutGrid, MoreVertical, Edit3, Trash2, Send } from 'lucide-react';
+import { Search, Filter, Grid, List, Plus, Folder, Package, Sliders, ChevronDown, ChevronRight, LayoutGrid, MoreVertical, Edit3, Trash2, Send, Radio } from 'lucide-react';
 import { DistributionModal } from './DistributionModal';
 
 interface SortlyInventoryProps {
@@ -10,11 +10,12 @@ interface SortlyInventoryProps {
     onDelete: (id: string) => void;
     onAddNew: () => void;
     onDataChange?: () => void;
+    onToggleOnAir?: (prize: Prize) => void;
     userRole?: UserRole | null;
     showSidebar?: boolean;
 }
 
-export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, stations, onEdit, onDelete, onAddNew, onDataChange, userRole, showSidebar = true }) => {
+export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, stations, onEdit, onDelete, onAddNew, onDataChange, onToggleOnAir, userRole, showSidebar = true }) => {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [searchQuery, setSearchQuery] = useState('');
     const [activeStationId, setActiveStationId] = useState<string | null>(null);
@@ -233,8 +234,18 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                                                 <button onClick={(e) => { e.stopPropagation(); onEdit(prize); }} className="p-2 bg-white rounded-full shadow-md text-gray-600 hover:text-blue-600 mx-1"><Edit3 size={16} /></button>
                                             </div>
 
-                                            <div className="absolute bottom-3 left-3">
+                                            <div className="absolute bottom-3 left-3 flex items-center gap-2">
                                                 <StatusBadge prize={prize} />
+                                                {/* On Air Toggle for Admin */}
+                                                {userRole === 'ADMIN' && onToggleOnAir && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); onToggleOnAir(prize); }}
+                                                        className={`p-1.5 rounded-full shadow-sm border transition-all ${prize.isOnAir ? 'bg-green-100 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-400 hover:text-blue-600'}`}
+                                                        title={prize.isOnAir ? "Remover do Ar" : "Colocar no Ar"}
+                                                    >
+                                                        <Radio size={14} className={prize.isOnAir ? "animate-pulse" : ""} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="p-5">
@@ -248,12 +259,13 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                                                     <p className="text-xs text-gray-400 font-bold uppercase">Quantidade</p>
                                                     <p className="text-lg font-bold text-gray-900">{prize.availableQuantity}</p>
                                                 </div>
-                                                {activeStationId === 'GENERAL' && (
+                                                {((activeStationId === 'GENERAL' && userRole === 'MASTER') || userRole === 'ADMIN') && (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); setDistributionItem(prize); }}
                                                         className="text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+                                                        title={userRole === 'ADMIN' ? "Separar Quantidade (Criar Lote)" : "Distribuir para Rádio"}
                                                     >
-                                                        <Send size={14} /> Distribuir
+                                                        <Send size={14} /> {userRole === 'ADMIN' ? 'Separar' : 'Distribuir'}
                                                     </button>
                                                 )}
                                             </div>

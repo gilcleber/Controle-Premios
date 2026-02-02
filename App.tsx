@@ -44,8 +44,8 @@ const App: React.FC = () => {
   const [outputNote, setOutputNote] = useState('');
   const [outputProgramId, setOutputProgramId] = useState('');
   const [outputType, setOutputType] = useState<OutputType>('DRAW');
-  const [outputDate, setOutputDate] = useState(''); // New state for date
-  const [additionalPrizes, setAdditionalPrizes] = useState<{ prizeId: string, quantity: number }[]>([]); // New state for combos
+  const [outputDate, setOutputDate] = useState('');
+  const [selectedAdditionalPrizes, setSelectedAdditionalPrizes] = useState<{ prizeId: string, quantity: number }[]>([]); // RESTORED FOR COMBOS
 
   // Programs State
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -543,9 +543,9 @@ const App: React.FC = () => {
 
       // Pre-fill additional prizes if they exist in comboDetails
       if (prize.comboDetails && prize.comboDetails.length > 0) {
-        setAdditionalPrizes(prize.comboDetails);
+        setSelectedAdditionalPrizes(prize.comboDetails);
       } else {
-        setAdditionalPrizes([]);
+        setSelectedAdditionalPrizes([]);
       }
 
       setOutputModalOpen(true);
@@ -624,7 +624,7 @@ const App: React.FC = () => {
 
     // 2. Register Additional Prizes (Combos)
     // 2. Register Additional Prizes (Combos)
-    for (const extra of additionalPrizes) {
+    for (const extra of selectedAdditionalPrizes) {
       const extraPrize = prizes.find(p => p.id === extra.prizeId);
       if (extraPrize) {
         const extraOutput: PrizeOutput = {
@@ -659,7 +659,7 @@ const App: React.FC = () => {
 
     setOutputModalOpen(false);
     setSelectedPrizeForOutput(null);
-    setAdditionalPrizes([]);
+    setSelectedAdditionalPrizes([]);
     addToast("Saída(s) registrada(s) com sucesso!", 'success');
     fetchData();
     if (userRole === 'ADMIN') setActiveTab('OUTPUTS');
@@ -1176,6 +1176,7 @@ const App: React.FC = () => {
                   onDataChange={fetchData}
                   userRole={userRole}
                   showSidebar={(userRole === 'ADMIN' || userRole === 'MASTER') && !isRadioMode}
+                  onToggleOnAir={handleToggleOnAir}
                 />
               </div>
             )}
@@ -1357,7 +1358,66 @@ const App: React.FC = () => {
                   />
                 </div>
 
-                {/* Combo Section removed as per user request - Logic still runs in background */}
+                {/* Combo Section RESTORED */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Adicionar Prêmio Extra (Combo)</label>
+                  <div className="flex gap-2 mb-2">
+                    <select
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      onChange={(e) => {
+                        const prizeId = e.target.value;
+                        if (!prizeId) return;
+                        // Add to additionalPrizes
+                        // Check if already added
+                        if (selectedAdditionalPrizes.find(ap => ap.prizeId === prizeId)) return;
+                        setSelectedAdditionalPrizes([...selectedAdditionalPrizes, { prizeId, quantity: 1 }]);
+                      }}
+                      value=""
+                    >
+                      <option value="">+ Incluir outro item...</option>
+                      {prizes.filter(p => p.id !== selectedPrizeForOutput?.id && p.availableQuantity > 0).map(p => (
+                        <option key={p.id} value={p.id}>{p.name} ({p.availableQuantity})</option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* List Selected Extras */}
+                  {selectedAdditionalPrizes.length > 0 && (
+                    <div className="space-y-2 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                      {selectedAdditionalPrizes.map((extra, idx) => {
+                        const p = prizes.find(pr => pr.id === extra.prizeId);
+                        if (!p) return null;
+                        return (
+                          <div key={extra.prizeId} className="flex items-center justify-between text-sm">
+                            <span className="flex-1 truncate font-medium text-gray-700">{p.name}</span>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="1"
+                                max={p.availableQuantity}
+                                value={extra.quantity}
+                                onChange={(e) => {
+                                  const newQty = parseInt(e.target.value) || 1;
+                                  const newExtras = [...selectedAdditionalPrizes];
+                                  newExtras[idx].quantity = newQty;
+                                  setSelectedAdditionalPrizes(newExtras);
+                                }}
+                                className="w-16 px-1 py-1 border border-gray-300 rounded text-center"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setSelectedAdditionalPrizes(selectedAdditionalPrizes.filter(x => x.prizeId !== extra.prizeId))}
+                                className="text-red-500 hover:text-red-700 p-1"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Programa / Evento</label>
                   <select value={outputProgramId} onChange={e => setOutputProgramId(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none bg-white">
