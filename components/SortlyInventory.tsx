@@ -11,9 +11,10 @@ interface SortlyInventoryProps {
     onAddNew: () => void;
     onDataChange?: () => void;
     userRole?: UserRole | null;
+    showSidebar?: boolean;
 }
 
-export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, stations, onEdit, onDelete, onAddNew, onDataChange, userRole }) => {
+export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, stations, onEdit, onDelete, onAddNew, onDataChange, userRole, showSidebar = true }) => {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [searchQuery, setSearchQuery] = useState('');
     const [activeStationId, setActiveStationId] = useState<string | null>(null);
@@ -73,7 +74,7 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
     return (
         <div className="flex bg-gray-50/50 h-full min-h-[600px] rounded-xl overflow-hidden shadow-sm border border-gray-200 font-sans">
             {/* Sidebar Filters (Premium Style) */}
-            {userRole !== 'OPERATOR' && (
+            {showSidebar && (
                 <div className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex shrink-0">
                     <div className="p-5 border-b border-gray-100">
                         <h2 className="font-bold text-gray-800 text-lg tracking-tight">Categorias</h2>

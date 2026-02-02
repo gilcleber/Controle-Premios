@@ -1151,6 +1151,7 @@ const App: React.FC = () => {
                   onAddNew={() => { setEditingPrize(undefined); setFormIsQuickDraw(false); setIsFormOpen(true); }}
                   onDataChange={fetchData}
                   userRole={userRole}
+                  showSidebar={(userRole === 'ADMIN' || userRole === 'MASTER') && !isRadioMode}
                 />
               </div>
             )}
