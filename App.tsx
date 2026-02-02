@@ -465,6 +465,14 @@ const App: React.FC = () => {
       }
     }
 
+    // Sanitize payload
+    if (!prize.scheduled_for) {
+      delete prize.scheduled_for;
+    }
+    if (!prize.photo_url) {
+      delete prize.photo_url;
+    }
+
     const { error } = await supabase.from('prizes').upsert(prize);
 
     if (error) {
