@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Prize, UserRole } from '../types';
-import { Search, Filter, Grid, List, Plus, Folder, Package, Sliders, ChevronDown, ChevronRight, LayoutGrid, MoreVertical, Edit3, Trash2, Send, Radio } from 'lucide-react';
+import { Search, Filter, Grid, List, Plus, Folder, Package, Sliders, ChevronDown, ChevronRight, LayoutGrid, MoreVertical, Edit3, Trash2, Send, Radio, Trophy, Gift } from 'lucide-react';
 import { DistributionModal } from './DistributionModal';
 
 interface SortlyInventoryProps {
@@ -11,11 +11,12 @@ interface SortlyInventoryProps {
     onAddNew: () => void;
     onDataChange?: () => void;
     onToggleOnAir?: (prize: Prize) => void;
+    onDraw?: (prize: Prize) => void;
     userRole?: UserRole | null;
     showSidebar?: boolean;
 }
 
-export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, stations, onEdit, onDelete, onAddNew, onDataChange, onToggleOnAir, userRole, showSidebar = true }) => {
+export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, stations, onEdit, onDelete, onAddNew, onDataChange, onToggleOnAir, onDraw, userRole, showSidebar = true }) => {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [searchQuery, setSearchQuery] = useState('');
     const [activeStationId, setActiveStationId] = useState<string | null>(null);
@@ -217,6 +218,7 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                             <Package size={48} className="mb-4 opacity-20" />
                             <p className="text-lg font-medium text-gray-500">Nenhum item encontrado</p>
                             <button onClick={() => { setActiveStationId(null); setActiveQuickFilter('ALL'); setSearchQuery(''); }} className="mt-2 text-blue-600 hover:underline text-sm font-medium">Limpar Filtros</button>
+                            <span className="mt-4 text-[10px] bg-gray-100 text-gray-400 px-2 py-1 rounded-full">System v2.2</span>
                         </div>
                     ) : (
                         viewMode === 'grid' ? (
@@ -255,19 +257,48 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                                             <p className="text-sm text-gray-500 line-clamp-2 mb-4 h-10">{prize.description || 'Sem descrição.'}</p>
 
                                             <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                                                <div>
+                                                <div className="flex-1">
                                                     <p className="text-xs text-gray-400 font-bold uppercase">Quantidade</p>
                                                     <p className="text-lg font-bold text-gray-900">{prize.availableQuantity}</p>
                                                 </div>
-                                                {((activeStationId === 'GENERAL' && userRole === 'MASTER') || userRole === 'ADMIN') && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setDistributionItem(prize); }}
-                                                        className="text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
-                                                        title={userRole === 'ADMIN' ? "Separar Quantidade (Criar Lote)" : "Distribuir para Rádio"}
-                                                    >
-                                                        <Send size={14} /> {userRole === 'ADMIN' ? 'Separar' : 'Distribuir'}
-                                                    </button>
-                                                )}
+
+                                                <div className="flex items-center gap-2">
+                                                    {/* COMBO DETAILS FOR GRID VIEW */}
+                                                    {prize.comboDetails && prize.comboDetails.length > 0 && (
+                                                        <div className="hidden sm:flex flex-col items-end mr-2">
+                                                            <span className="text-[10px] font-bold text-indigo-600 uppercase flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 mb-1">
+                                                                <Plus size={8} /> Item Extra
+                                                            </span>
+                                                            {prize.comboDetails.map((detail, idx) => (
+                                                                <span key={idx} className="text-xs font-medium text-gray-600 truncate max-w-[100px]" title={detail.name}>
+                                                                    + {detail.quantity} {detail.name}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Register Output Button (Operator) */}
+                                                    {onDraw && (userRole === 'OPERATOR' || userRole === 'RECEPTION' || userRole === 'ADMIN') && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); onDraw(prize); }}
+                                                            disabled={prize.availableQuantity === 0}
+                                                            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
+                                                            title="Registrar Ganhador"
+                                                        >
+                                                            <Trophy size={14} /> Registrar
+                                                        </button>
+                                                    )}
+
+                                                    {((activeStationId === 'GENERAL' && userRole === 'MASTER') || userRole === 'ADMIN') && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setDistributionItem(prize); }}
+                                                            className="text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+                                                            title={userRole === 'ADMIN' ? "Separar Quantidade (Criar Lote)" : "Distribuir para Rádio"}
+                                                        >
+                                                            <Send size={14} /> {userRole === 'ADMIN' ? 'Separar' : 'Distribuir'}
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -317,6 +348,17 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                                                 </td>
                                                 <td className="p-4 pr-8 text-right">
                                                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        {onDraw && (userRole === 'OPERATOR' || userRole === 'RECEPTION' || userRole === 'ADMIN') && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); onDraw(prize); }}
+                                                                disabled={prize.availableQuantity === 0}
+                                                                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-colors shadow-sm"
+                                                                title="Registrar Ganhador"
+                                                            >
+                                                                <Trophy size={16} />
+                                                            </button>
+                                                        )}
+
                                                         {activeStationId === 'GENERAL' && (
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); setDistributionItem(prize); }}

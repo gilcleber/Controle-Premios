@@ -1177,6 +1177,7 @@ const App: React.FC = () => {
                   userRole={userRole}
                   showSidebar={(userRole === 'ADMIN' || userRole === 'MASTER') && !isRadioMode}
                   onToggleOnAir={handleToggleOnAir}
+                  onDraw={openOutputModal}
                 />
               </div>
             )}
