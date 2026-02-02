@@ -125,7 +125,11 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                         radio_station_id: item.radio_station_id,
                         source_master_id: item.source_master_id || item.id,
                         photo_url: item.photo_url,
-                        comboDetails: selectedComboPrizes // Save combo structure
+                        comboDetails: selectedComboPrizes.map(cp => ({
+                            prizeId: cp.prizeId,
+                            quantity: cp.quantity,
+                            name: availablePrizes.find(ap => ap.id === cp.prizeId)?.name || 'Item Extra'
+                        }))
                     });
 
                 if (insertError) throw insertError;

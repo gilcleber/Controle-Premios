@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Prize, UserRole } from '../types';
-import { Edit2, Trash2, Trophy, AlertTriangle, Calendar, FileText, Gift, Radio, Eye, EyeOff } from 'lucide-react';
+import { Edit2, Trash2, Trophy, AlertTriangle, Calendar, FileText, Gift, Radio, Eye, EyeOff, Plus } from 'lucide-react';
 
 interface PrizeListProps {
   prizes: Prize[];
@@ -68,6 +68,21 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
                 <h3 className="text-xl font-bold text-gray-900 mb-2 leading-tight min-h-[3.5rem]">
                   {prize.availableQuantity} {prize.name}
                 </h3>
+
+                {prize.comboDetails && prize.comboDetails.length > 0 && (
+                  <div className="mb-3 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
+                    <p className="text-xs font-bold text-indigo-600 uppercase mb-1 flex items-center gap-1">
+                      <Plus size={10} /> Item Adicional
+                    </p>
+                    {prize.comboDetails.map((detail, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm text-indigo-900">
+                        <span className="font-bold bg-white px-1.5 rounded text-indigo-700 shadow-sm border border-indigo-100">{detail.quantity}</span>
+                        <span className="truncate" title={detail.name || 'Item Extra'}>{detail.name || 'Item Extra'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <p className="text-sm text-gray-500 mb-6 line-clamp-2">
                   {prize.description || 'Sem descrição adicional.'}
                 </p>

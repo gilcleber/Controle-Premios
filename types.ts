@@ -66,7 +66,7 @@ export interface Prize {
   maxDrawDate: string; // ISO Date - Prazo máximo para sortear
   pickupDeadlineDays: number; // Dias úteis para retirada
   isOnAir?: boolean; // Se true, aparece na tela do locutor
-  comboDetails?: { prizeId: string, quantity: number }[]; // Detalhes do combo para evitar duplo débito
+  comboDetails?: { prizeId: string, quantity: number, name?: string }[]; // Detalhes do combo para evitar duplo débito
 
   // NEW: Multi-tenant fields
   radio_station_id?: string; // Estação à qual pertence
