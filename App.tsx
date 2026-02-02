@@ -1321,159 +1321,101 @@ const App: React.FC = () => {
       {
         outputModalOpen && selectedPrizeForOutput && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8">
-              <div className="p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl">
-                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                  <Trophy size={20} className="text-indigo-600" /> Registrar Ganhador
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8 overflow-hidden">
+              <div className="bg-gray-800 p-6 text-center text-white">
+                <h3 className="text-xl font-bold uppercase mb-2">
+                  {outputQuantity} {selectedPrizeForOutput.name}
                 </h3>
-                <p className="text-sm text-gray-600 mt-1">Prêmio: <span className="font-bold text-blue-600">{selectedPrizeForOutput.name}</span></p>
-
-                {/* COMBO DETAILS DISPLAY */}
                 {selectedPrizeForOutput.comboDetails && selectedPrizeForOutput.comboDetails.length > 0 && (
-                  <div className="mt-3 bg-indigo-100 p-3 rounded-lg border border-indigo-200">
-                    <p className="text-xs font-bold text-indigo-700 uppercase mb-2 flex items-center gap-1">
-                      <Plus size={12} /> Pacote Promocional Inclui:
-                    </p>
-                    <div className="space-y-1">
-                      {selectedPrizeForOutput.comboDetails.map((detail, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm text-indigo-900 bg-white/50 px-2 py-1 rounded">
-                          <span className="font-bold bg-white px-1.5 rounded text-indigo-700 shadow-sm border border-indigo-100">{detail.quantity}</span>
-                          <span className="truncate flex-1 font-medium">{detail.name || 'Item Extra'}</span>
+                  <div className="text-sm text-gray-300 font-medium space-y-1">
+                    {selectedPrizeForOutput.comboDetails.map((detail, idx) => {
+                      const detailName = detail.name || prizes.find(p => p.id === detail.prizeId)?.name || 'Item Extra';
+                      return (
+                        <div key={idx} className="flex items-center justify-center gap-2">
+                          <Plus size={12} className="text-green-400" />
+                          <span>{detail.quantity} {detailName}</span>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
               <form onSubmit={handleRegisterOutput} className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  {userRole === 'ADMIN' && (
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tipo de Saída</label>
-                      <div className="flex bg-gray-100 rounded-lg p-1">
-                        <button type="button" onClick={() => setOutputType('DRAW')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${outputType === 'DRAW' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Trophy size={14} /> Sorteio</button>
-                        <button type="button" onClick={() => setOutputType('GIFT')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${outputType === 'GIFT' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><GiftIcon size={14} /> Brinde</button>
-                      </div>
-                    </div>
-                  )}
-                  {/* QTD Input Restored */}
+                {/* Row 1: Qty | Date | Program */}
+                <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Quantidade</label>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Qtd.</label>
                     <input
                       type="number"
                       min="1"
                       max={selectedPrizeForOutput.availableQuantity}
                       value={outputQuantity}
                       onChange={e => setOutputQuantity(Math.max(1, parseInt(e.target.value)))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-center font-bold focus:ring-2 focus:ring-green-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data Sorteio</label>
+                    <input
+                      type="date"
+                      required
+                      value={outputDate}
+                      onChange={e => setOutputDate(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data do Sorteio</label>
-                  <input
-                    type="date"
-                    required
-                    value={outputDate}
-                    onChange={e => setOutputDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
-                  />
-                </div>
-
-                {/* Combo Section RESTORED */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Adicionar Prêmio Extra (Combo)</label>
-                  <div className="flex gap-2 mb-2">
-                    <select
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      onChange={(e) => {
-                        const prizeId = e.target.value;
-                        if (!prizeId) return;
-                        // Add to additionalPrizes
-                        // Check if already added
-                        if (selectedAdditionalPrizes.find(ap => ap.prizeId === prizeId)) return;
-                        setSelectedAdditionalPrizes([...selectedAdditionalPrizes, { prizeId, quantity: 1 }]);
-                      }}
-                      value=""
-                    >
-                      <option value="">+ Incluir outro item...</option>
-                      {prizes.filter(p => p.id !== selectedPrizeForOutput?.id && p.availableQuantity > 0).map(p => (
-                        <option key={p.id} value={p.id}>{p.name} ({p.availableQuantity})</option>
-                      ))}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Programa</label>
+                    <select required value={outputProgramId} onChange={e => setOutputProgramId(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none bg-white">
+                      <option value="">Selecione...</option>
+                      {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </div>
-                  {/* List Selected Extras */}
-                  {selectedAdditionalPrizes.length > 0 && (
-                    <div className="space-y-2 bg-gray-50 p-2 rounded-lg border border-gray-100">
-                      {selectedAdditionalPrizes.map((extra, idx) => {
-                        const p = prizes.find(pr => pr.id === extra.prizeId);
-                        if (!p) return null;
-                        return (
-                          <div key={extra.prizeId} className="flex items-center justify-between text-sm">
-                            <span className="flex-1 truncate font-medium text-gray-700">{p.name}</span>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                min="1"
-                                max={p.availableQuantity}
-                                value={extra.quantity}
-                                onChange={(e) => {
-                                  const newQty = parseInt(e.target.value) || 1;
-                                  const newExtras = [...selectedAdditionalPrizes];
-                                  newExtras[idx].quantity = newQty;
-                                  setSelectedAdditionalPrizes(newExtras);
-                                }}
-                                className="w-16 px-1 py-1 border border-gray-300 rounded text-center"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setSelectedAdditionalPrizes(selectedAdditionalPrizes.filter(x => x.prizeId !== extra.prizeId))}
-                                className="text-red-500 hover:text-red-700 p-1"
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
 
+                {/* Row 2: Name */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Programa / Evento</label>
-                  <select value={outputProgramId} onChange={e => setOutputProgramId(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none bg-white">
-                    <option value="">Selecione um programa...</option>
-                    {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </div>
-                <div className="border-t border-gray-100 pt-4 mt-2">
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome do Ganhador *</label>
-                  <input type="text" required value={winnerName} onChange={e => setWinnerName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none font-medium" placeholder="Nome completo do ouvinte" autoComplete="off" />
+                  <input type="text" required value={winnerName} onChange={e => setWinnerName(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none font-bold text-lg text-gray-800 placeholder-gray-300" placeholder="Nome completo" autoComplete="off" />
                   {winnerHistory.length > 0 && (
                     <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3"><div className="flex items-center gap-2 text-amber-800 font-bold text-xs uppercase mb-2"><History size={14} /> Histórico Encontrado ({winnerHistory.length})</div><div className="max-h-24 overflow-y-auto space-y-1">{winnerHistory.map(h => (<div key={h.id} className="text-xs text-amber-900 flex justify-between border-b border-amber-100 pb-1 last:border-0"><span>{new Date(h.date).toLocaleDateString()} - {h.prizeName}</span><span className="opacity-70">{h.note}</span></div>))}</div></div>
                   )}
                 </div>
+
+                {/* Row 3: Phone | Doc */}
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone</label><input type="tel" value={winnerPhone} onChange={e => setWinnerPhone(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" placeholder="(XX) 9XXXX-XXXX" /></div>
                   <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">CPF / RG</label><input type="text" value={winnerDoc} onChange={e => setWinnerDoc(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" /></div>
                 </div>
+
+                {/* Row 4: Email */}
                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label><input type="email" value={winnerEmail} onChange={e => setWinnerEmail(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" /></div>
-                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Endereço</label><input type="text" value={winnerAddress} onChange={e => setWinnerAddress(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" /></div>
-                <div className="bg-blue-50 p-3 rounded text-xs text-blue-800 border border-blue-100 flex items-center justify-between">
+
+                {/* Row 5: City | Deadline */}
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <span className="block font-bold">Prazo de Retirada:</span>
-                    {(() => {
-                      if (!outputDate) return "Selecione a data";
-                      const [y, m, d] = outputDate.split('-').map(Number);
-                      const dateObj = new Date(y, m - 1, d);
-                      return addBusinessDays(dateObj, selectedPrizeForOutput.pickupDeadlineDays).toLocaleDateString();
-                    })()} ({selectedPrizeForOutput.pickupDeadlineDays} dias úteis)
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Cidade / Endereço</label>
+                    <input type="text" value={winnerAddress} onChange={e => setWinnerAddress(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" />
                   </div>
-                  <AlertTriangle size={16} className="opacity-50" />
+                  <div className="bg-gray-100 p-2 rounded border border-gray-200 flex flex-col justify-center">
+                    <span className="text-[10px] text-gray-500 font-bold uppercase">Prazo de Retirada</span>
+                    <span className="font-bold text-gray-800">
+                      {(() => {
+                        if (!outputDate) return "--/--/----";
+                        const [y, m, d] = outputDate.split('-').map(Number);
+                        const dateObj = new Date(y, m - 1, d);
+                        return addBusinessDays(dateObj, selectedPrizeForOutput.pickupDeadlineDays).toLocaleDateString();
+                      })()}
+                    </span>
+                    <span className="text-[10px] text-gray-400">({selectedPrizeForOutput.pickupDeadlineDays} dias úteis)</span>
+                  </div>
                 </div>
-                <div className="flex gap-3 pt-4"><button type="button" onClick={() => { setOutputModalOpen(false); setSelectedPrizeForOutput(null); }} className="flex-1 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">Cancelar</button><button type="submit" className="flex-1 py-3 text-white bg-green-600 rounded-lg hover:bg-green-700 flex justify-center items-center gap-2 font-bold shadow-lg shadow-green-200"><Trophy size={18} /> Confirmar</button></div>
+
+                {/* Footer Buttons */}
+                <div className="flex gap-3 pt-4 border-t border-gray-100 mt-4">
+                  <button type="button" onClick={() => { setOutputModalOpen(false); setSelectedPrizeForOutput(null); }} className="flex-1 py-4 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 font-bold text-sm uppercase transition-colors">Cancelar</button>
+                  <button type="submit" className="flex-1 py-4 text-white bg-green-600 rounded-lg hover:bg-green-700 font-bold text-sm uppercase shadow-lg shadow-green-200 transition-colors">Confirmar Registro</button>
+                </div>
               </form>
             </div>
           </div>
