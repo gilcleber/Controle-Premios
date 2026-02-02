@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowRight, AlertTriangle, Calendar, Clock, Radio } from 'lucide-react';
+import { X, ArrowRight, AlertTriangle, Calendar, Clock, Radio, Plus, Trash } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import type { Prize, RadioStation, UserRole } from '../types';
 
@@ -8,7 +8,7 @@ interface DistributionModalProps {
     show?: boolean;
     onClose: () => void;
     onDistributed: () => void;
-    userRole?: UserRole | null; // Add userRole
+    userRole?: UserRole | null;
 }
 
 export const DistributionModal: React.FC<DistributionModalProps> = ({
@@ -27,9 +27,15 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
     const [scheduledFor, setScheduledFor] = useState('');
     const [isOnAirNow, setIsOnAirNow] = useState(false);
 
+    // Combo/Bonus State
+    const [availablePrizes, setAvailablePrizes] = useState<Prize[]>([]);
+    const [selectedComboPrizes, setSelectedComboPrizes] = useState<{ prizeId: string, quantity: number }[]>([]);
+
     useEffect(() => {
         if (!isAdmin) {
             fetchStations();
+        } else {
+            fetchAvailablePrizes();
         }
     }, [isAdmin]);
 
@@ -44,8 +50,43 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
             console.error('Erro ao buscar estações:', error);
             return;
         }
-
         setStations(data || []);
+    };
+
+    const fetchAvailablePrizes = async () => {
+        // Fetch prizes for combo selection (exclude current item)
+        // Only fetch items with available stock
+        const { data, error } = await supabase
+            .from('prizes')
+            .select('*')
+            .gt('availableQuantity', 0)
+            .neq('id', item.id) // Exclude self
+            .order('name');
+
+        if (error) {
+            console.error("Erro ao buscar prêmios:", error);
+            return;
+        }
+        setAvailablePrizes(data || []);
+    };
+
+    const handleAddComboItem = (prizeId: string) => {
+        if (!prizeId) return;
+        if (selectedComboPrizes.find(p => p.prizeId === prizeId)) return;
+        setSelectedComboPrizes([...selectedComboPrizes, { prizeId, quantity: 1 }]);
+    };
+
+    const handleRemoveComboItem = (prizeId: string) => {
+        setSelectedComboPrizes(selectedComboPrizes.filter(p => p.prizeId !== prizeId));
+    };
+
+    const handleUpdateComboQuantity = (prizeId: string, qty: number) => {
+        const maxQty = availablePrizes.find(p => p.id === prizeId)?.availableQuantity || 1;
+        const validQty = Math.max(1, Math.min(qty, maxQty));
+
+        setSelectedComboPrizes(prev => prev.map(p =>
+            p.prizeId === prizeId ? { ...p, quantity: validQty } : p
+        ));
     };
 
     const handleDistribute = async () => {
@@ -64,7 +105,9 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
         try {
             if (isAdmin) {
                 // --- ADMIN INTERNAL SPLIT LOGIC ---
-                // Create a COPY of the item with new quantity and schedule
+                // 1. Create a COPY of the item with new quantity and schedule
+                // Store comboDetails to track the extra items allocated
+
                 const { error: insertError } = await supabase
                     .from('prizes')
                     .insert({
@@ -77,21 +120,30 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                         validityDate: item.validityDate,
                         maxDrawDate: item.maxDrawDate,
                         pickupDeadlineDays: item.pickupDeadlineDays,
-                        isOnAir: isOnAirNow, // Helper boolean
-                        scheduled_for: scheduledFor || null, // Helper schedule
-                        radio_station_id: item.radio_station_id, // Same station
-                        source_master_id: item.source_master_id || item.id, // Link to original
-                        photo_url: item.photo_url
+                        isOnAir: isOnAirNow,
+                        scheduled_for: scheduledFor || null,
+                        radio_station_id: item.radio_station_id,
+                        source_master_id: item.source_master_id || item.id,
+                        photo_url: item.photo_url,
+                        comboDetails: selectedComboPrizes // Save combo structure
                     });
 
                 if (insertError) throw insertError;
 
+                // 2. Debit Stock of Combo Items
+                for (const combo of selectedComboPrizes) {
+                    const originalPrize = availablePrizes.find(p => p.id === combo.prizeId);
+                    if (originalPrize) {
+                        const newQty = originalPrize.availableQuantity - combo.quantity;
+                        await supabase
+                            .from('prizes')
+                            .update({ availableQuantity: newQty })
+                            .eq('id', combo.prizeId);
+                    }
+                }
+
             } else {
                 // --- MASTER DISTRIBUTION LOGIC (Existing) ---
-                // 1. Verificar se esse prêmio já existe na estação (vindo do mesmo source_master_id OU sendo uma cópia deste prize id)
-                // Se o item NÃO tem source_master_id, ele É o master. Então usamos o ID dele como source.
-                // Se o item JÁ tem source_master_id, ele é um filho. (Mas distribuição geralmente parte do master)
-
                 const masterId = item.source_master_id || item.id;
 
                 const { data: existingPrize } = await supabase
@@ -102,7 +154,7 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                     .single();
 
                 if (existingPrize) {
-                    // UPDATE: Somar quantidade ao existente na rádio
+                    // UPDATE
                     const { error: updatePrizeError } = await supabase
                         .from('prizes')
                         .update({
@@ -113,11 +165,11 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
 
                     if (updatePrizeError) throw updatePrizeError;
                 } else {
-                    // INSERT: Criar novo prêmio na rádio
+                    // INSERT
                     const { error: insertError } = await supabase
                         .from('prizes')
                         .insert({
-                            id: crypto.randomUUID(), // Generate ID client-side
+                            id: crypto.randomUUID(),
                             name: item.name,
                             description: item.description || '',
                             totalQuantity: quantity,
@@ -128,26 +180,19 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                             pickupDeadlineDays: 3,
                             isOnAir: false,
                             radio_station_id: selectedStation,
-                            source_master_id: masterId, // Link para rastreabilidade
-                            photo_url: item.photo_url // Mantém a foto
+                            source_master_id: masterId,
+                            photo_url: item.photo_url
                         });
 
                     if (insertError) throw insertError;
                 }
             }
 
-            // 2. Registrar distribuição no histórico (Opcional, mas bom ter)
-            // Vamos usar a mesma tabela master_inventory_history se for compatível, ou criar log simples.
-            // Usuário pediu "mostrar como será feito". Vamos assumir que o feedback visual basta, mas gravar log é bom.
-            // Vou pular insert de histórico específico se a tabela não suportar Prize ID como master, 
-            // mas vou Manter o DEBITO no item original.
-
-            // 3. Debitar do Estoque Geral (Origem)
+            // Common: Debit from Origin (Main Item)
             const { error: updateError } = await supabase
                 .from('prizes')
                 .update({
                     availableQuantity: item.availableQuantity - quantity,
-                    // Se zerar, podemos manter com 0 ou ocultar. Mantemos com 0.
                 })
                 .eq('id', item.id);
 
@@ -167,8 +212,8 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
     const selectedStationData = stations.find((s) => s.id === selectedStation);
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8">
                 <div className="p-6 border-b border-gray-100 bg-indigo-50 rounded-t-xl flex justify-between items-center">
                     <div>
                         <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
@@ -182,7 +227,7 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                     </button>
                 </div>
 
-                <div className="p-6 space-y-4">
+                <div className="p-6 space-y-5">
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div className="grid grid-cols-2 gap-3 text-sm">
                             <div>
@@ -234,33 +279,88 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                     </div>
 
                     {isAdmin && (
-                        <div className="space-y-4 pt-2 border-t border-gray-100">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1 flex items-center gap-1">
-                                    <Clock size={14} /> Agendar para (Data e Hora)
+                        <>
+                            {/* COMBO SECTION */}
+                            <div className="pt-2 border-t border-gray-100">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
+                                    Adicionar Prêmio Extra (Combo)
                                 </label>
-                                <input
-                                    type="datetime-local"
-                                    value={scheduledFor}
-                                    onChange={(e) => setScheduledFor(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                />
-                                <p className="text-xs text-gray-400 mt-1">O item aparecerá para o locutor (operador) neste horário.</p>
+                                <div className="flex gap-2 mb-3">
+                                    <select
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        onChange={(e) => handleAddComboItem(e.target.value)}
+                                        value=""
+                                    >
+                                        <option value="">+ Incluir item adicional...</option>
+                                        {availablePrizes
+                                            .filter(p => !selectedComboPrizes.find(cp => cp.prizeId === p.id))
+                                            .map(p => (
+                                                <option key={p.id} value={p.id}>{p.name} (Disp: {p.availableQuantity})</option>
+                                            ))
+                                        }
+                                    </select>
+                                </div>
+
+                                {selectedComboPrizes.length > 0 && (
+                                    <div className="space-y-2 bg-indigo-50/50 p-3 rounded-lg border border-indigo-100">
+                                        {selectedComboPrizes.map((combo) => {
+                                            const original = availablePrizes.find(p => p.id === combo.prizeId);
+                                            if (!original) return null;
+                                            return (
+                                                <div key={combo.prizeId} className="flex items-center gap-2 bg-white p-2 rounded border border-gray-100 shadow-sm">
+                                                    <span className="flex-1 text-sm font-medium text-gray-700 truncate">{original.name}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-xs text-gray-400">Qtd:</span>
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            max={original.availableQuantity}
+                                                            value={combo.quantity}
+                                                            onChange={(e) => handleUpdateComboQuantity(combo.prizeId, parseInt(e.target.value) || 1)}
+                                                            className="w-14 px-1 py-1 text-center border border-gray-200 rounded text-sm font-bold"
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        onClick={() => handleRemoveComboItem(combo.prizeId)}
+                                                        className="text-red-400 hover:text-red-600 p-1"
+                                                    >
+                                                        <Trash size={14} />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100 flex items-center gap-3">
-                                <input
-                                    type="checkbox"
-                                    id="isOnAirNow"
-                                    checked={isOnAirNow}
-                                    onChange={(e) => setIsOnAirNow(e.target.checked)}
-                                    className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
-                                />
-                                <label htmlFor="isOnAirNow" className="text-sm font-bold text-indigo-900 cursor-pointer select-none flex items-center gap-2">
-                                    <Radio size={16} /> Liberar no ar agora mesmo?
-                                </label>
+                            <div className="space-y-4 pt-2 border-t border-gray-100">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1 flex items-center gap-1">
+                                        <Clock size={14} /> Agendar para (Data e Hora)
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        value={scheduledFor}
+                                        onChange={(e) => setScheduledFor(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    />
+                                    <p className="text-xs text-gray-400 mt-1">O item aparecerá para o locutor (operador) neste horário.</p>
+                                </div>
+
+                                <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100 flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        id="isOnAirNow"
+                                        checked={isOnAirNow}
+                                        onChange={(e) => setIsOnAirNow(e.target.checked)}
+                                        className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
+                                    />
+                                    <label htmlFor="isOnAirNow" className="text-sm font-bold text-indigo-900 cursor-pointer select-none flex items-center gap-2">
+                                        <Radio size={16} /> Liberar no ar agora mesmo?
+                                    </label>
+                                </div>
                             </div>
-                        </div>
+                        </>
                     )}
 
                     {!isAdmin && selectedStation && (
