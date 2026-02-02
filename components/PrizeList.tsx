@@ -165,13 +165,13 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
                         <div className="flex items-center gap-2" title="Validade">
                           <Calendar size={12} className="text-blue-400" />
                           <span className={expiredValidity ? 'text-red-500 font-medium' : ''}>
-                            Val: {new Date(prize.validityDate).toLocaleDateString()}
+                            Val: {(() => { try { return prize.validityDate ? new Date(prize.validityDate).toLocaleDateString() : 'N/A'; } catch { return 'Inválido'; } })()}
                           </span>
                         </div>
                         <div className="flex items-center gap-2" title="Prazo Máximo Sorteio">
                           <Calendar size={12} className="text-orange-400" />
                           <span className={expiredDraw ? 'text-red-500 font-medium' : ''}>
-                            Max Sorteio: {new Date(prize.maxDrawDate).toLocaleDateString()}
+                            Max Sorteio: {(() => { try { return prize.maxDrawDate ? new Date(prize.maxDrawDate).toLocaleDateString() : 'N/A'; } catch { return 'Inválido'; } })()}
                           </span>
                         </div>
                       </div>

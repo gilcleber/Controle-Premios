@@ -191,15 +191,16 @@ const App: React.FC = () => {
     const q = searchQuery.toLowerCase();
     if (!q) return true;
     return (
-      (output.winnerName && output.winnerName.toLowerCase().includes(q)) ||
-      (output.prizeName && output.prizeName.toLowerCase().includes(q)) ||
-      (output.note && output.note.toLowerCase().includes(q)) ||
-      (output.date && output.date.includes(q)) ||
-      (output.winnerDoc && output.winnerDoc.includes(q))
+      (output.winnerName && String(output.winnerName).toLowerCase().includes(q)) ||
+      (output.prizeName && String(output.prizeName).toLowerCase().includes(q)) ||
+      (output.note && String(output.note).toLowerCase().includes(q)) ||
+      (output.date && String(output.date).includes(q)) ||
+      (output.winnerDoc && String(output.winnerDoc).includes(q))
     );
   }).filter(output => {
     // General Filter: Hide Combo parts from the list to prevent "duplication" visual
-    if (output.note && output.note.includes('(Combo)')) {
+    // Defensive check: Ensure note is a string before checking includes
+    if (output && typeof output.note === 'string' && output.note.includes('(Combo)')) {
       return false;
     }
 
@@ -1148,6 +1149,7 @@ const App: React.FC = () => {
                   onDelete={handleDeletePrize}
                   onEdit={handleEditPrize}
                   onAddNew={() => { setEditingPrize(undefined); setFormIsQuickDraw(false); setIsFormOpen(true); }}
+                  onDataChange={fetchData}
                 />
               </div>
             )}
@@ -1180,6 +1182,8 @@ const App: React.FC = () => {
                       onDraw={openOutputModal}
                       onGenerateScript={handleGenerateScript}
                       onToggleOnAir={handleToggleOnAir}
+                      showStationName={true}
+                      stations={stations}
                     />
                     {prizes.filter(p => p.isOnAir).length === 0 && (
                       <p className="text-sm text-indigo-400 italic text-center py-4">Nenhum prêmio no ar no momento.</p>
@@ -1762,27 +1766,13 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* MASTER MODALS */}
+      {/* MASTER MODALS (Deprecated/Moved) */}
       {masterItemFormOpen && (
         <MasterItemForm
           onClose={() => setMasterItemFormOpen(false)}
           onSaved={() => {
             addToast('Item cadastrado com sucesso!', 'success');
-            // Forçar reload do componente (ele tem seu próprio fetch)
-          }}
-        />
-      )}
-
-      {distributionModalOpen && selectedMasterItem && (
-        <DistributionModal
-          item={selectedMasterItem}
-          onClose={() => {
-            setDistributionModalOpen(false);
-            setSelectedMasterItem(null);
-          }}
-          onDistributed={() => {
-            addToast('Distribuição realizada com sucesso!', 'success');
-            // Forçar reload
+            fetchPrizes();
           }}
         />
       )}

@@ -1,3 +1,6 @@
+import React from 'react';
+import { PrizeOutput, UserRole } from '../types';
+import { User, FileText, Phone, MapPin, AlertOctagon, CheckCircle, Clock, Eye, MessageCircle, CalendarPlus, Edit2, Trash2 } from 'lucide-react';
 import { PickupModal } from './PickupModal';
 
 interface OutputListProps {
@@ -93,9 +96,13 @@ export const WinnerList: React.FC<OutputListProps> = ({ winners, role, onConfirm
                         </div>
                       </td>
                       <td className="p-4 text-xs text-gray-600 space-y-1">
-                        <div>Ganhou: {new Date(output.date).toLocaleDateString()}</div>
+                        <div>Ganhou: {(() => {
+                          try { return output.date ? new Date(output.date).toLocaleDateString() : 'data inválida'; } catch (e) { return 'data inválida'; }
+                        })()}</div>
                         <div className={isLate ? 'text-red-600 font-bold' : ''}>
-                          Limite: {new Date(output.pickupDeadline).toLocaleDateString()}
+                          Limite: {(() => {
+                            try { return output.pickupDeadline ? new Date(output.pickupDeadline).toLocaleDateString() : 's/ prazo'; } catch (e) { return 'data inválida'; }
+                          })()}
                         </div>
                       </td>
                       <td className="p-4">
@@ -139,7 +146,7 @@ export const WinnerList: React.FC<OutputListProps> = ({ winners, role, onConfirm
                           {/* Se estiver expirado e for Recepção, mostra botão do WhatsApp */}
                           {isReception && isLate && output.status === 'PENDING' && (
                             <a
-                              href={`https://wa.me/5519999999999?text=Olá, o ouvinte ${output.winnerName} veio retirar o prêmio ${output.prizeName} mas está vencido (Limite: ${new Date(output.pickupDeadline).toLocaleDateString()}). Pode liberar?`}
+                              href={`https://wa.me/5519999999999?text=Olá, o ouvinte ${output.winnerName} veio retirar o prêmio ${output.prizeName} mas está vencido (Limite: ${(() => { try { return new Date(output.pickupDeadline).toLocaleDateString(); } catch { return '???'; } })()}). Pode liberar?`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="mr-2 px-3 py-1.5 bg-green-100 text-green-700 text-xs font-medium rounded hover:bg-green-200 transition-colors shadow-sm whitespace-nowrap flex items-center gap-1"

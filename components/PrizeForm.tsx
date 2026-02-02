@@ -63,10 +63,27 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, role, prizes 
   // ... (handleChange hook)
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'totalQuantity' || name === 'pickupDeadlineDays' ? parseInt(value) || 0 : value
-    }));
+    // Calculate new state
+    const newValue = name === 'totalQuantity' || name === 'pickupDeadlineDays' || name === 'availableQuantity' ? parseInt(value) || 0 : value;
+
+    setFormData(prev => {
+      const newState = { ...prev, [name]: newValue };
+
+      // Smart Update: If changing Total Quantity, update Available Quantity automatically
+      if (name === 'totalQuantity') {
+        const newTotal = newValue as number;
+        if (initialData) {
+          // Edit Mode: Maintain difference
+          const delta = newTotal - initialData.totalQuantity;
+          newState.availableQuantity = initialData.availableQuantity + delta;
+        } else {
+          // New Mode: Avail = Total
+          newState.availableQuantity = newTotal;
+        }
+      }
+
+      return newState;
+    });
   };
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,6 +98,8 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, role, prizes 
     e.preventDefault();
 
     const quantity = formData.totalQuantity || 1;
+    // Use form value (which might be edited or auto-calculated) or fallback to quantity
+    const available = formData.availableQuantity !== undefined ? formData.availableQuantity : quantity;
 
     // Se for Master, define defaults para campos ocultos
     const finalPickupDays = isMaster ? 30 : (formData.pickupDeadlineDays || 3);
@@ -93,7 +112,7 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, role, prizes 
       name: formData.name || 'Sem nome',
       description: formData.description || '',
       totalQuantity: quantity,
-      availableQuantity: initialData ? initialData.availableQuantity : quantity,
+      availableQuantity: available,
       entryDate: formData.entryDate || new Date().toISOString(),
       validityDate: formData.validityDate || '',
       maxDrawDate: formData.maxDrawDate || '',
@@ -118,6 +137,7 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, role, prizes 
           validityDate: sourcePrize.validityDate,
           maxDrawDate: sourcePrize.maxDrawDate,
           totalQuantity: 1,
+          availableQuantity: 1,
           photo_url: sourcePrize.photo_url // Copy photo
         }));
       }
@@ -213,7 +233,7 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, role, prizes 
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade Total</label>
               <input
                 type="number"
                 name="totalQuantity"
@@ -222,6 +242,20 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, role, prizes 
                 value={formData.totalQuantity}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade Disponível</label>
+              <input
+                type="number"
+                name="availableQuantity"
+                min="0"
+                required
+                value={formData.availableQuantity}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-blue-300/50 bg-blue-50/30 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                title="Calculado automaticamente, mas você pode corrigir se necessário."
               />
             </div>
 

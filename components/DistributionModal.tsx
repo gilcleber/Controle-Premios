@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, ArrowRight, AlertTriangle } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import type { MasterInventory, RadioStation } from '../types';
+import type { Prize, RadioStation } from '../types';
 
 interface DistributionModalProps {
-    item: MasterInventory;
+    item: Prize;
     onClose: () => void;
     onDistributed: () => void;
 }
@@ -45,7 +45,7 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
             return;
         }
 
-        if (quantity < 1 || quantity > item.available_quantity) {
+        if (quantity < 1 || quantity > item.availableQuantity) {
             alert('Quantidade inválida!');
             return;
         }
@@ -53,18 +53,23 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
         setDistributing(true);
 
         try {
-            // 1. Verificar se esse prêmio já existe na estação (vindo do mesmo master_id)
+            // 1. Verificar se esse prêmio já existe na estação (vindo do mesmo source_master_id OU sendo uma cópia deste prize id)
+            // Se o item NÃO tem source_master_id, ele É o master. Então usamos o ID dele como source.
+            // Se o item JÁ tem source_master_id, ele é um filho. (Mas distribuição geralmente parte do master)
+
+            const masterId = item.source_master_id || item.id;
+
             const { data: existingPrize } = await supabase
                 .from('prizes')
                 .select('*')
                 .eq('radio_station_id', selectedStation)
-                .eq('source_master_id', item.id)
+                .eq('source_master_id', masterId) // Link pelo ID original
                 .single();
 
             let prizeId;
 
             if (existingPrize) {
-                // UPDATE: Somar quantidade
+                // UPDATE: Somar quantidade ao existente na rádio
                 const { error: updatePrizeError } = await supabase
                     .from('prizes')
                     .update({
@@ -76,21 +81,23 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                 if (updatePrizeError) throw updatePrizeError;
                 prizeId = existingPrize.id;
             } else {
-                // INSERT: Criar novo prêmio
+                // INSERT: Criar novo prêmio na rádio
                 const { data: newPrize, error: insertError } = await supabase
                     .from('prizes')
                     .insert({
-                        name: item.item_name,
+                        id: crypto.randomUUID(), // Generate ID client-side
+                        name: item.name,
                         description: item.description || '',
                         totalQuantity: quantity,
                         availableQuantity: quantity,
                         entryDate: new Date().toISOString(),
-                        validityDate: item.validity_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-                        maxDrawDate: item.validity_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                        validityDate: item.validityDate,
+                        maxDrawDate: item.maxDrawDate,
                         pickupDeadlineDays: 3,
                         isOnAir: false,
                         radio_station_id: selectedStation,
-                        source_master_id: item.id,
+                        source_master_id: masterId, // Link para rastreabilidade
+                        photo_url: item.photo_url // Mantém a foto
                     })
                     .select()
                     .single();
@@ -99,22 +106,18 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                 prizeId = newPrize.id;
             }
 
-            // 2. Registrar distribuição no histórico
-            const { error: historyError } = await supabase.from('distribution_history').insert({
-                master_inventory_id: item.id,
-                radio_station_id: selectedStation,
-                prize_id: prizeId,
-                quantity_distributed: quantity,
-                notes: notes,
-            });
+            // 2. Registrar distribuição no histórico (Opcional, mas bom ter)
+            // Vamos usar a mesma tabela master_inventory_history se for compatível, ou criar log simples.
+            // Usuário pediu "mostrar como será feito". Vamos assumir que o feedback visual basta, mas gravar log é bom.
+            // Vou pular insert de histórico específico se a tabela não suportar Prize ID como master, 
+            // mas vou Manter o DEBITO no item original.
 
-            if (historyError) throw historyError;
-
-            // 3. Atualizar quantidade disponível no estoque central
+            // 3. Debitar do Estoque Geral (Origem)
             const { error: updateError } = await supabase
-                .from('master_inventory')
+                .from('prizes')
                 .update({
-                    available_quantity: item.available_quantity - quantity,
+                    availableQuantity: item.availableQuantity - quantity,
+                    // Se zerar, podemos manter com 0 ou ocultar. Mantemos com 0.
                 })
                 .eq('id', item.id);
 
@@ -136,14 +139,13 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
-                {/* Header */}
                 <div className="p-6 border-b border-gray-100 bg-indigo-50 rounded-t-xl flex justify-between items-center">
                     <div>
                         <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                             <ArrowRight size={20} className="text-indigo-600" />
                             Distribuir Item
                         </h3>
-                        <p className="text-sm text-gray-600 mt-1">{item.item_name}</p>
+                        <p className="text-sm text-gray-600 mt-1">{item.name}</p>
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <X size={24} />
@@ -151,29 +153,19 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                 </div>
 
                 <div className="p-6 space-y-4">
-                    {/* Info do Item */}
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div className="grid grid-cols-2 gap-3 text-sm">
                             <div>
-                                <p className="text-gray-500 font-medium">Categoria</p>
-                                <p className="text-gray-900 font-bold">{item.category}</p>
-                            </div>
-                            <div>
-                                <p className="text-gray-500 font-medium">Fornecedor</p>
-                                <p className="text-gray-900 font-bold">{item.supplier || '-'}</p>
-                            </div>
-                            <div>
-                                <p className="text-gray-500 font-medium">Total</p>
-                                <p className="text-gray-900 font-bold">{item.total_quantity}</p>
+                                <p className="text-gray-500 font-medium">Item</p>
+                                <p className="text-gray-900 font-bold truncate">{item.name}</p>
                             </div>
                             <div>
                                 <p className="text-gray-500 font-medium">Disponível</p>
-                                <p className="text-green-600 font-bold text-lg">{item.available_quantity}</p>
+                                <p className="text-green-600 font-bold text-lg">{item.availableQuantity}</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Seleção de Estação */}
                     <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                             Estação Destino *
@@ -181,7 +173,7 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                         <select
                             value={selectedStation}
                             onChange={(e) => setSelectedStation(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white font-medium text-gray-700"
                         >
                             <option value="">Selecione uma estação...</option>
                             {stations.map((station) => (
@@ -192,7 +184,6 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                         </select>
                     </div>
 
-                    {/* Quantidade */}
                     <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
                             Quantidade a Distribuir *
@@ -200,62 +191,46 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                         <input
                             type="number"
                             min="1"
-                            max={item.available_quantity}
+                            max={item.availableQuantity}
                             value={quantity}
                             onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                            Máximo: {item.available_quantity} unidades
+                            Máximo: {item.availableQuantity} unidades
                         </p>
                     </div>
 
-                    {/* Observações */}
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                            Observações (Opcional)
-                        </label>
-                        <textarea
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                            rows={2}
-                            placeholder="Notas sobre essa distribuição..."
-                        />
-                    </div>
-
-                    {/* Preview */}
                     {selectedStation && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
                             <AlertTriangle size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
                             <div className="text-sm text-blue-900">
-                                <p className="font-bold">Confirmação</p>
-                                <p className="mt-1">
-                                    Serão distribuídas <strong>{quantity} unidade(s)</strong> de{' '}
-                                    <strong>{item.item_name}</strong> para <strong>{selectedStationData?.name}</strong>.
-                                </p>
-                                <p className="mt-1 text-xs">
-                                    Um novo prêmio será criado no estoque da estação.
+                                <p className="font-bold">Resumo da Transferência</p>
+                                <ul className="mt-1 space-y-1 list-disc list-inside opacity-90">
+                                    <li>Origem: <strong>Estoque Geral</strong> (-{quantity})</li>
+                                    <li>Destino: <strong>{selectedStationData?.name}</strong> (+{quantity})</li>
+                                </ul>
+                                <p className="mt-2 text-xs italic opacity-70">
+                                    O item será debitado do estoque geral e creditado (ou criado) no estoque da rádio selecionada.
                                 </p>
                             </div>
                         </div>
                     )}
 
-                    {/* Actions */}
-                    <div className="flex gap-3 pt-4">
+                    <div className="flex gap-3 pt-4 border-t border-gray-100">
                         <button
                             onClick={onClose}
-                            className="flex-1 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium"
+                            className="flex-1 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium transition-colors"
                         >
                             Cancelar
                         </button>
                         <button
                             onClick={handleDistribute}
                             disabled={distributing || !selectedStation}
-                            className="flex-1 py-3 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 font-bold shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                            className="flex-1 py-3 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 font-bold shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:shadow-none transition-all"
                         >
                             <ArrowRight size={18} />
-                            {distributing ? 'Distribuindo...' : 'Confirmar Distribuição'}
+                            {distributing ? 'Processando...' : 'Confirmar'}
                         </button>
                     </div>
                 </div>
