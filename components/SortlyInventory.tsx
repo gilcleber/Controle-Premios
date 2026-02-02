@@ -358,6 +358,7 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                         item={distributionItem}
                         onClose={() => setDistributionItem(null)}
                         onDistributed={handleDistributeSuccess}
+                        userRole={userRole}
                     />
                 )
             }
