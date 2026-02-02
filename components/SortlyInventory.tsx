@@ -122,88 +122,92 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col bg-gray-50/30">
-                {/* Header Toolbar - Premium Look */}
-                <div className="bg-white px-6 py-5 border-b border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center sticky top-0 z-20 shadow-sm">
-                    <div className="flex items-center gap-4 w-full md:w-auto flex-1">
-                        <div className="relative w-full max-w-md group">
-                            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                            <input
-                                type="text"
-                                placeholder="O que você está procurando?"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all placeholder-gray-500 font-medium"
-                            />
-                        </div>
+                {/* Header Toolbar - Premium Look (Hidden for Operator) */}
+                {userRole !== 'OPERATOR' && (
+                    <>
+                        <div className="bg-white px-6 py-5 border-b border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center sticky top-0 z-20 shadow-sm">
+                            <div className="flex items-center gap-4 w-full md:w-auto flex-1">
+                                <div className="relative w-full max-w-md group">
+                                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                                    <input
+                                        type="text"
+                                        placeholder="O que você está procurando?"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all placeholder-gray-500 font-medium"
+                                    />
+                                </div>
 
-                        {/* Filters Row */}
-                        <div className="hidden lg:flex items-center gap-2">
-                            {[
-                                { id: 'ALL', label: 'Todos' },
-                                { id: 'ON_AIR', label: 'No Ar' },
-                                { id: 'NEW', label: 'Novos' },
-                                { id: 'LOW_STOCK', label: 'Baixo Estoque' }
-                            ].map(filter => (
+                                {/* Filters Row */}
+                                <div className="hidden lg:flex items-center gap-2">
+                                    {[
+                                        { id: 'ALL', label: 'Todos' },
+                                        { id: 'ON_AIR', label: 'No Ar' },
+                                        { id: 'NEW', label: 'Novos' },
+                                        { id: 'LOW_STOCK', label: 'Baixo Estoque' }
+                                    ].map(filter => (
+                                        <button
+                                            key={filter.id}
+                                            onClick={() => setActiveQuickFilter(filter.id as any)}
+                                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeQuickFilter === filter.id
+                                                ? 'bg-gray-900 text-white border-gray-900 shadow-md'
+                                                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                                                }`}
+                                        >
+                                            {filter.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                                    <button
+                                        onClick={() => setViewMode('grid')}
+                                        className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+                                    >
+                                        <LayoutGrid size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('list')}
+                                        className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+                                    >
+                                        <List size={18} />
+                                    </button>
+                                </div>
+
                                 <button
-                                    key={filter.id}
-                                    onClick={() => setActiveQuickFilter(filter.id as any)}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeQuickFilter === filter.id
-                                        ? 'bg-gray-900 text-white border-gray-900 shadow-md'
-                                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-                                        }`}
+                                    onClick={onAddNew}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-200 flex items-center gap-2 transition-all active:scale-95"
                                 >
-                                    {filter.label}
+                                    <Plus size={18} /> <span className="hidden sm:inline">Novo Produto</span>
                                 </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
-                            <button
-                                onClick={() => setViewMode('grid')}
-                                className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
-                            >
-                                <LayoutGrid size={18} />
-                            </button>
-                            <button
-                                onClick={() => setViewMode('list')}
-                                className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
-                            >
-                                <List size={18} />
-                            </button>
+                            </div>
                         </div>
 
-                        <button
-                            onClick={onAddNew}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-200 flex items-center gap-2 transition-all active:scale-95"
-                        >
-                            <Plus size={18} /> <span className="hidden sm:inline">Novo Produto</span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* KPI Bar - Clean Style */}
-                <div className="px-8 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-                            <Package size={20} />
+                        {/* KPI Bar - Clean Style */}
+                        <div className="px-8 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                                    <Package size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-gray-400 uppercase">Total Estoque</p>
+                                    <p className="text-2xl font-bold text-gray-900">{totalQuantity}</p>
+                                </div>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center">
+                                    <Folder size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-gray-400 uppercase">Itens Únicos</p>
+                                    <p className="text-2xl font-bold text-gray-900">{filteredPrizes.length}</p>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-xs font-bold text-gray-400 uppercase">Total Estoque</p>
-                            <p className="text-2xl font-bold text-gray-900">{totalQuantity}</p>
-                        </div>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center">
-                            <Folder size={20} />
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-gray-400 uppercase">Itens Únicos</p>
-                            <p className="text-2xl font-bold text-gray-900">{filteredPrizes.length}</p>
-                        </div>
-                    </div>
-                </div>
+                    </>
+                )}
 
                 {/* Content Area */}
                 <div className="flex-1 overflow-y-auto px-8 pb-8">
@@ -336,13 +340,15 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                 </div>
             </div>
 
-            {distributionItem && (
-                <DistributionModal
-                    item={distributionItem}
-                    onClose={() => setDistributionItem(null)}
-                    onDistributed={handleDistributeSuccess}
-                />
-            )}
-        </div>
+            {
+                distributionItem && (
+                    <DistributionModal
+                        item={distributionItem}
+                        onClose={() => setDistributionItem(null)}
+                        onDistributed={handleDistributeSuccess}
+                    />
+                )
+            }
+        </div >
     );
 };
