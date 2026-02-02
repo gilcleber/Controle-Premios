@@ -579,7 +579,7 @@ const App: React.FC = () => {
 
     const dateObj = isTopicDay ? new Date() : new Date(year, month - 1, day, 12, 0, 0);
 
-    const deadlineDate = addBusinessDays(dateObj, selectedPrizeForOutput.pickupDeadlineDays);
+    const deadlineDate = addBusinessDays(dateObj, 3); // FIXED: Force 3 business days logic
 
     const selectedProgram = programs.find(p => p.id === outputProgramId);
     const programName = selectedProgram ? selectedProgram.name : 'Avulso';
