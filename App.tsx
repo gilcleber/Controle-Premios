@@ -586,6 +586,13 @@ const App: React.FC = () => {
     const finalNote = outputType === 'GIFT' ? `Brinde/Diretoria - ${programName}` : programName;
 
     // 1. Register Main Prize
+    // Build comboDetails with resolved names for display
+    const resolvedComboDetails = selectedPrizeForOutput.comboDetails?.map(d => ({
+      prizeId: d.prizeId,
+      quantity: d.quantity,
+      name: d.name || prizes.find(p => p.id === d.prizeId)?.name || 'Item Extra'
+    })) || [];
+
     const newOutput: PrizeOutput = {
       id: crypto.randomUUID(),
       prizeId: selectedPrizeForOutput.id,
@@ -603,6 +610,7 @@ const App: React.FC = () => {
       winnerEmail,
       winnerDoc,
       winnerAddress,
+      comboDetails: resolvedComboDetails.length > 0 ? resolvedComboDetails : undefined, // NEW: Save combo info
     };
 
     const { error: insertError } = await supabase.from('outputs').insert({
@@ -1696,73 +1704,18 @@ const App: React.FC = () => {
                   <Users size={20} className="text-blue-600" />
                   Detalhes do Ganhador
                 </h3>
-                <p className="text-sm text-gray-600 mt-1">Prêmio: <span className="font-bold">{viewingOutput.prizeName}</span></p>
-              </div>
-              <button onClick={() => setViewingOutput(null)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
-            </div>
-            <div className="p-6 space-y-6">
-
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                <p className="text-xs font-bold text-blue-800 uppercase mb-1">Nome Completo</p>
-                <p className="text-lg font-bold text-gray-900">{viewingOutput.winnerName}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">Telefone</p>
-                  <p className="font-medium text-gray-800">{viewingOutput.winnerPhone || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">Documento (CPF/RG)</p>
-                  <p className="font-medium text-gray-800">{viewingOutput.winnerDoc || '-'}</p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-bold text-gray-500 uppercase mb-1">Email</p>
-                <p className="font-medium text-gray-800">{viewingOutput.winnerEmail || '-'}</p>
-              </div>
-
-              <div>
-                <p className="text-xs font-bold text-gray-500 uppercase mb-1">Endereço</p>
-                <p className="font-medium text-gray-800 bg-gray-50 p-3 rounded border border-gray-200">{viewingOutput.winnerAddress || '-'}</p>
-              </div>
-
-              <div className="border-t border-gray-100 pt-4 flex justify-between items-center">
-                <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">Programa</p>
-                  <p className="text-sm font-medium text-gray-800">{viewingOutput.programName || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">Data Sorteio</p>
-                  <p className="text-sm font-medium text-gray-800">{new Date(viewingOutput.date).toLocaleDateString()} às {new Date(viewingOutput.date).toLocaleTimeString().slice(0, 5)}</p>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  onClick={() => setViewingOutput(null)}
-                  className="w-full py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-bold shadow-lg shadow-blue-200"
-                >
-                  Fechar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View Output Modal (Reception) */}
-      {viewingOutput && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8">
-            <div className="p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                  <Users size={20} className="text-blue-600" />
-                  Detalhes do Ganhador
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">Prêmio: <span className="font-bold">{viewingOutput.prizeName}</span></p>
+                <p className="text-sm text-gray-600 mt-1">
+                  Prêmio: <span className="font-bold">{viewingOutput.quantity}x {viewingOutput.prizeName}</span>
+                  {/* COMBO DETAILS - Show additional items if present */}
+                  {viewingOutput.comboDetails && viewingOutput.comboDetails.length > 0 && (
+                    <span className="text-indigo-600 font-medium">
+                      {viewingOutput.comboDetails.map((d: { prizeId: string; quantity: number; name?: string }, idx: number) => {
+                        const resolvedName = d.name || prizes.find(p => p.id === d.prizeId)?.name || 'Item Extra';
+                        return ` + ${d.quantity} ${resolvedName}`;
+                      }).join('')}
+                    </span>
+                  )}
+                </p>
               </div>
               <button onClick={() => setViewingOutput(null)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
             </div>

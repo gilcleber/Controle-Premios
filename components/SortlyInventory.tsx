@@ -224,7 +224,7 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                             <Package size={48} className="mb-4 opacity-20" />
                             <p className="text-lg font-medium text-gray-500">Nenhum item encontrado</p>
                             <button onClick={() => { setActiveStationId(null); setActiveQuickFilter('ALL'); setSearchQuery(''); }} className="mt-2 text-blue-600 hover:underline text-sm font-medium">Limpar Filtros</button>
-                            <span className="mt-4 text-[10px] bg-gray-100 text-gray-400 px-2 py-1 rounded-full">System v2.7</span>
+                            <span className="mt-4 text-[10px] bg-gray-100 text-gray-400 px-2 py-1 rounded-full">System v2.8</span>
                         </div>
                     ) : (
                         viewMode === 'grid' ? (
@@ -261,22 +261,24 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                                                 <h3 className="font-bold text-gray-800 text-lg leading-tight truncate flex-1" title={prize.name}>{prize.name}</h3>
                                             </div>
 
-                                            {/* LOCUTION SCRIPT for Operator */}
-                                            <div className="mb-3 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
-                                                <p className="text-[10px] uppercase font-bold text-indigo-400 mb-0.5">Locução (No Ar):</p>
-                                                <p className="text-sm font-bold text-indigo-900 leading-tight">
-                                                    "Valendo {prize.availableQuantity} {prize.name}
-                                                    {prize.comboDetails && prize.comboDetails.length > 0 && (
-                                                        <span>
-                                                            {prize.comboDetails.map(d => {
-                                                                // LOOKUP NAME if missing
-                                                                const resolvedName = d.name || (allPrizes || prizes).find(p => p.id === d.prizeId)?.name || 'Item Extra';
-                                                                return ` + ${d.quantity} ${resolvedName}`;
-                                                            }).join('')}
-                                                        </span>
-                                                    )}"
-                                                </p>
-                                            </div>
+                                            {/* LOCUTION SCRIPT for Operator ONLY */}
+                                            {userRole === 'OPERATOR' && (
+                                                <div className="mb-3 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
+                                                    <p className="text-[10px] uppercase font-bold text-indigo-400 mb-0.5">Locução (No Ar):</p>
+                                                    <p className="text-sm font-bold text-indigo-900 leading-tight">
+                                                        "Valendo {prize.availableQuantity} {prize.name}
+                                                        {prize.comboDetails && prize.comboDetails.length > 0 && (
+                                                            <span>
+                                                                {prize.comboDetails.map(d => {
+                                                                    // LOOKUP NAME if missing
+                                                                    const resolvedName = d.name || (allPrizes || prizes).find(p => p.id === d.prizeId)?.name || 'Item Extra';
+                                                                    return ` + ${d.quantity} ${resolvedName}`;
+                                                                }).join('')}
+                                                            </span>
+                                                        )}"
+                                                    </p>
+                                                </div>
+                                            )}
 
                                             <p className="text-xs text-gray-400 line-clamp-2 mb-4 h-8">{prize.description || 'Sem descrição.'}</p>
 
@@ -296,8 +298,8 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                                                         </div>
                                                     )}
 
-                                                    {/* Register Output Button (Operator) */}
-                                                    {onDraw && (userRole === 'OPERATOR' || userRole === 'RECEPTION' || userRole === 'ADMIN') && (
+                                                    {/* Register Output Button (Operator ONLY) */}
+                                                    {onDraw && userRole === 'OPERATOR' && (
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); onDraw(prize); }}
                                                             disabled={prize.availableQuantity === 0}

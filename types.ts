@@ -109,6 +109,9 @@ export interface PrizeOutput {
 
   // NEW: Multi-tenant field
   radio_station_id?: string;
+
+  // NEW: Combo Details (for displaying full prize composition)
+  comboDetails?: { prizeId: string; quantity: number; name?: string }[];
 }
 
 export type TabView = 'DASHBOARD' | 'INVENTORY' | 'OUTPUTS' | 'PROGRAMS' | 'MASTER_INVENTORY';
