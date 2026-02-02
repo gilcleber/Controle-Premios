@@ -1529,9 +1529,9 @@ const App: React.FC = () => {
                       const prize = prizes.find(p => p.id === editingOutput.prizeId);
                       let newDeadline = editingOutput.pickupDeadline;
 
-                      if (prize) {
-                        newDeadline = addBusinessDays(newDate, prize.pickupDeadlineDays).toISOString();
-                      }
+                      // FIXED: Always 3 business days, regardless of prize config
+                      // Before: prize.pickupDeadlineDays (was causing wrong dates like 16/03)
+                      newDeadline = addBusinessDays(newDate, 3).toISOString();
 
                       setEditingOutput({
                         ...editingOutput,
