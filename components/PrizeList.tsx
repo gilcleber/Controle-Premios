@@ -43,6 +43,7 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
             <Radio size={48} className="mb-4 opacity-20" />
             <p className="text-lg font-medium text-center">Nenhum prêmio disponível para sorteio neste momento.</p>
             <p className="text-sm text-center opacity-70">Aguarde o administrador liberar os itens.</p>
+            <span className="mt-4 text-[10px] bg-gray-100 text-gray-400 px-2 py-1 rounded-full">System v2.1</span>
           </div>
         ) : (
           availablePrizes.map(prize => (
