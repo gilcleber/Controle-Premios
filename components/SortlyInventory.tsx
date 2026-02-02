@@ -36,10 +36,15 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
         }
 
         // 2. Filter by Station (Folder)
+        // 2. Filter by Station (Folder)
         if (activeStationId === 'GENERAL') {
             result = result.filter(p => !p.radio_station_id);
         } else if (activeStationId) {
             result = result.filter(p => p.radio_station_id === activeStationId);
+        } else if (userRole === 'MASTER') {
+            // DEFAULT MASTER VIEW: Show ONLY General Items (Hide Distributed)
+            // The user explicitly requested to NOT see "Bone RB" mixed in with main stock.
+            result = result.filter(p => !p.radio_station_id);
         }
 
         // 3. Filter by Quick Filters
@@ -219,7 +224,7 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                             <Package size={48} className="mb-4 opacity-20" />
                             <p className="text-lg font-medium text-gray-500">Nenhum item encontrado</p>
                             <button onClick={() => { setActiveStationId(null); setActiveQuickFilter('ALL'); setSearchQuery(''); }} className="mt-2 text-blue-600 hover:underline text-sm font-medium">Limpar Filtros</button>
-                            <span className="mt-4 text-[10px] bg-gray-100 text-gray-400 px-2 py-1 rounded-full">System v2.6</span>
+                            <span className="mt-4 text-[10px] bg-gray-100 text-gray-400 px-2 py-1 rounded-full">System v2.7</span>
                         </div>
                     ) : (
                         viewMode === 'grid' ? (
