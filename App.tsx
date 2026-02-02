@@ -243,7 +243,7 @@ const App: React.FC = () => {
 
     // Filter by Role/Tab
     if (userRole === 'OPERATOR') {
-      filtered = filtered.filter(p => p.isOnAir);
+      filtered = filtered.filter(p => p.isOnAir && p.availableQuantity > 0);
     } else if (activeTab === 'INVENTORY' && userRole === 'ADMIN') {
       // Admin Inventory: Hide "On Air" items to keep list clean
       filtered = filtered.filter(p => !p.isOnAir);
