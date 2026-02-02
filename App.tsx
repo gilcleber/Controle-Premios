@@ -776,6 +776,10 @@ const App: React.FC = () => {
       finalNote = programName;
     }
 
+    // FIXED: Always recalculate deadline on save to ensure consistency (3 business days)
+    // This fixes existing records that may have wrong deadlines.
+    const correctedDeadline = addBusinessDays(new Date(editingOutput.date), 3).toISOString();
+
     const { error } = await supabase.from('outputs').update({
       winnerName: editingOutput.winnerName,
       winnerPhone: editingOutput.winnerPhone,
@@ -787,7 +791,7 @@ const App: React.FC = () => {
       note: finalNote,
       type: editingOutput.type,
       date: editingOutput.date, // Update date
-      pickupDeadline: editingOutput.pickupDeadline // Update deadline
+      pickupDeadline: correctedDeadline // Enforce corrected deadline
     }).eq('id', editingOutput.id);
 
     if (error) {
