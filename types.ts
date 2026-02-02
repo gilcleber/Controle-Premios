@@ -72,6 +72,7 @@ export interface Prize {
   radio_station_id?: string; // Estação à qual pertence
   source_master_id?: string; // Item do estoque central de origem
   photo_url?: string; // Foto do Item (Base64 ou URL)
+  scheduled_for?: string; // ISO Date (Data/Hora de Agendamento)
 }
 
 export interface Program {

@@ -243,7 +243,23 @@ const App: React.FC = () => {
 
     // Filter by Role/Tab
     if (userRole === 'OPERATOR') {
-      filtered = filtered.filter(p => p.isOnAir && p.availableQuantity > 0);
+      const now = new Date();
+      filtered = filtered.filter(p => {
+        // 1. Must have stock
+        if (p.availableQuantity <= 0) return false;
+
+        // 2. Manual Override (Always Show)
+        if (p.isOnAir) return true;
+
+        // 3. Automated Schedule (Show 30min before)
+        if (p.scheduled_for) {
+          const scheduledTime = new Date(p.scheduled_for).getTime();
+          const diffMinutes = (scheduledTime - now.getTime()) / (1000 * 60);
+          return diffMinutes <= 30; // Shows if starts in <= 30 mins (or is in past)
+        }
+
+        return false;
+      });
     } else if (activeTab === 'INVENTORY' && userRole === 'ADMIN') {
       // Admin Inventory: Hide "On Air" items to keep list clean
       filtered = filtered.filter(p => !p.isOnAir);

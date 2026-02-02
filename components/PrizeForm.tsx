@@ -26,6 +26,7 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, role, prizes 
     pickupDeadlineDays: 3,
     isOnAir: forceOnAir,
     photo_url: '', // Foto
+    scheduled_for: '', // Agendamento
   });
 
   // ... (previous state hooks: debitFromStock, selectedSourceId, etc)
@@ -119,6 +120,7 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, role, prizes 
       pickupDeadlineDays: finalPickupDays,
       isOnAir: finalIsOnAir,
       photo_url: formData.photo_url, // Salva Foto
+      scheduled_for: formData.scheduled_for, // Salva Agendamento
     };
     onSave(prizeToSave, debitFromStock ? selectedSourceId : undefined, isSwappingStock ? refundSourceId : undefined, additionalPrizes);
   };
@@ -180,26 +182,46 @@ export const PrizeForm: React.FC<PrizeFormProps> = ({ initialData, role, prizes 
             )}
           </div>
 
-          {/* On Air Toggle Switch - OCULTO PARA MASTER */}
+          {/* On Air Toggle & Scheduling - OCULTO PARA MASTER */}
           {!isMaster && (
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex items-center justify-between">
-              <div>
-                <span className="block font-bold text-gray-800 flex items-center gap-2">
-                  <Radio size={18} className={formData.isOnAir ? "text-blue-600" : "text-gray-400"} />
-                  Disponível no Ar?
-                </span>
-                <span className="text-xs text-gray-500">Se marcado, aparece na tela do locutor imediatamente.</span>
+            <div className="space-y-3">
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex items-center justify-between">
+                <div>
+                  <span className="block font-bold text-gray-800 flex items-center gap-2">
+                    <Radio size={18} className={formData.isOnAir ? "text-blue-600" : "text-gray-400"} />
+                    Disponível no Ar? (Manual)
+                  </span>
+                  <span className="text-xs text-gray-500">Se marcado, aparece IMEDIATAMENTE.</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="isOnAir"
+                    checked={!!formData.isOnAir}
+                    onChange={handleCheckboxChange}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
+
+              {/* Scheduling Input */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
+                  <span className="bg-blue-100 text-blue-700 p-1 rounded"><Sparkles size={14} /></span>
+                  Agendar Sorteio (Automático)
+                </label>
                 <input
-                  type="checkbox"
-                  name="isOnAir"
-                  checked={!!formData.isOnAir}
-                  onChange={handleCheckboxChange}
-                  className="sr-only peer"
+                  type="datetime-local"
+                  name="scheduled_for"
+                  value={formData.scheduled_for || ''}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
                 />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Se definido, o item aparecerá para o locutor <strong>30 minutos antes</strong> deste horário.
+                </p>
+              </div>
             </div>
           )}
 
