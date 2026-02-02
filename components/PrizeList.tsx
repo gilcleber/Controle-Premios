@@ -193,28 +193,23 @@ export const PrizeList: React.FC<PrizeListProps> = ({ prizes, role, onEdit, onDe
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {/* Operações de Rádio (Sorteio/Roteiro) - Apenas para Operador/Recepção ou se estiver em modo rádio e não for gestão global */}
-                        {/* Usuário solicitou remoção do Master/Admin pois "é da rádio" */}
-                        {(role !== 'MASTER' && role !== 'ADMIN') && (
-                          <>
-                            <button
-                              onClick={() => onGenerateScript(prize)}
-                              className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                              title="Gerar Texto Locutor"
-                            >
-                              <FileText size={18} />
-                            </button>
+                        {/* Allow Draw/Script for EVERYONE, including Admin/Master */}
+                        <button
+                          onClick={() => onGenerateScript(prize)}
+                          className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Gerar Texto Locutor"
+                        >
+                          <FileText size={18} />
+                        </button>
 
-                            <button
-                              onClick={() => onDraw(prize)}
-                              disabled={!hasStock || expiredDraw || expiredValidity}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                              title="Registrar Ganhador"
-                            >
-                              <Trophy size={18} />
-                            </button>
-                          </>
-                        )}
+                        <button
+                          onClick={() => onDraw(prize)}
+                          disabled={!hasStock || expiredDraw || expiredValidity}
+                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          title="Registrar Ganhador"
+                        >
+                          <Trophy size={18} />
+                        </button>
 
                         {isAdmin && (
                           <>

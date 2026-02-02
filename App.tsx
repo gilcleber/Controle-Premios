@@ -1321,7 +1321,29 @@ const App: React.FC = () => {
         outputModalOpen && selectedPrizeForOutput && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8">
-              <div className="p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl"><h3 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Trophy size={20} className="text-indigo-600" /> Registrar Ganhador</h3><p className="text-sm text-gray-600 mt-1">Prêmio: <span className="font-bold text-blue-600">{selectedPrizeForOutput.name}</span></p></div>
+              <div className="p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl">
+                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <Trophy size={20} className="text-indigo-600" /> Registrar Ganhador
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">Prêmio: <span className="font-bold text-blue-600">{selectedPrizeForOutput.name}</span></p>
+
+                {/* COMBO DETAILS DISPLAY */}
+                {selectedPrizeForOutput.comboDetails && selectedPrizeForOutput.comboDetails.length > 0 && (
+                  <div className="mt-3 bg-indigo-100 p-3 rounded-lg border border-indigo-200">
+                    <p className="text-xs font-bold text-indigo-700 uppercase mb-2 flex items-center gap-1">
+                      <Plus size={12} /> Pacote Promocional Inclui:
+                    </p>
+                    <div className="space-y-1">
+                      {selectedPrizeForOutput.comboDetails.map((detail, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm text-indigo-900 bg-white/50 px-2 py-1 rounded">
+                          <span className="font-bold bg-white px-1.5 rounded text-indigo-700 shadow-sm border border-indigo-100">{detail.quantity}</span>
+                          <span className="truncate flex-1 font-medium">{detail.name || 'Item Extra'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
               <form onSubmit={handleRegisterOutput} className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   {userRole === 'ADMIN' && (
