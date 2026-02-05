@@ -208,8 +208,13 @@ const App: React.FC = () => {
     if (userRole === 'RECEPTION' || (userRole === 'ADMIN' && activeTab === 'OUTPUTS')) {
       const deadline = new Date(output.pickupDeadline);
       const now = new Date();
-      // Reset time for strict date comparison if needed, but loose comparison is usually fine
-      const isExpired = output.status === 'PENDING' && deadline < now;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const deadlineDate = new Date(deadline);
+      deadlineDate.setHours(0, 0, 0, 0);
+
+      // Status logic: item is expired only if the current date is strictly AFTER the deadline date
+      const isExpired = output.status === 'PENDING' && deadlineDate < today;
 
       // Note: Default 'receptionTab' state is used for both roles now
       if (receptionTab === 'PENDING') {
@@ -1217,7 +1222,7 @@ const App: React.FC = () => {
                       Estes são os prêmios visíveis para o locutor. Você pode editar, trocar estoque ou remover daqui.
                     </p>
                     <PrizeList
-                      prizes={prizes.filter(p => p.isOnAir)}
+                      prizes={prizes.filter(p => p.isOnAir && p.availableQuantity > 0)}
                       role={userRole}
                       onDelete={handleDeletePrize}
                       onEdit={handleEditPrize}
