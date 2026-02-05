@@ -73,6 +73,7 @@ export interface Prize {
   source_master_id?: string; // Item do estoque central de origem
   photo_url?: string; // Foto do Item (Base64 ou URL)
   scheduled_for?: string; // ISO Date (Data/Hora de Agendamento)
+  is_lot?: boolean; // NEW: Se true, é um lote separado do estoque principal
 }
 
 export interface Program {

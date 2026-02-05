@@ -58,6 +58,11 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
             result = result.filter(p => new Date(p.entryDate) >= sevenDaysAgo);
         }
 
+        // 4. Hide Lots from Inventory (Lots are for draws, not stock management)
+        if (userRole !== 'OPERATOR') {
+            result = result.filter(p => !p.is_lot);
+        }
+
         return result;
     }, [prizes, searchQuery, activeStationId, activeQuickFilter]);
 
@@ -224,7 +229,7 @@ export const SortlyInventory: React.FC<SortlyInventoryProps> = ({ prizes, statio
                             <Package size={48} className="mb-4 opacity-20" />
                             <p className="text-lg font-medium text-gray-500">Nenhum item encontrado</p>
                             <button onClick={() => { setActiveStationId(null); setActiveQuickFilter('ALL'); setSearchQuery(''); }} className="mt-2 text-blue-600 hover:underline text-sm font-medium">Limpar Filtros</button>
-                            <span className="mt-4 text-[10px] bg-gray-100 text-gray-400 px-2 py-1 rounded-full">System v3.1</span>
+                            <span className="mt-4 text-[10px] bg-gray-100 text-gray-400 px-2 py-1 rounded-full">System v3.2</span>
                         </div>
                     ) : (
                         viewMode === 'grid' ? (

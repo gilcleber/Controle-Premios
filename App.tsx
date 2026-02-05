@@ -261,8 +261,9 @@ const App: React.FC = () => {
         return false;
       });
     } else if (activeTab === 'INVENTORY' && userRole === 'ADMIN') {
-      // Admin Inventory: Hide "On Air" items to keep list clean
-      filtered = filtered.filter(p => !p.isOnAir);
+      // Admin Inventory: Hide "On Air" items and "Operator Lots" to keep list clean
+      // Lots are temporary items separated for draws, they shouldn't clutter the stock list.
+      filtered = filtered.filter(p => !p.isOnAir && !p.is_lot);
     }
 
     return filtered;

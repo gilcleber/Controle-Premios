@@ -125,6 +125,7 @@ export const DistributionModal: React.FC<DistributionModalProps> = ({
                         radio_station_id: item.radio_station_id,
                         source_master_id: item.source_master_id || item.id,
                         photo_url: item.photo_url,
+                        is_lot: true, // Flag as a separated lot
                         comboDetails: selectedComboPrizes.map(cp => ({
                             prizeId: cp.prizeId,
                             quantity: cp.quantity,
